@@ -1,5 +1,6 @@
 # rctl
 [![Static Badge](https://img.shields.io/badge/self--hosted%20runners-teal?logo=GitHub&label=GitHub%20Actions)](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners)
+[![Linter](https://github.com/vbem/rctl/actions/workflows/linter.yml/badge.svg)](https://github.com/vbem/rctl/actions/workflows/linter.yml)
 
 Yet another GitHub action runners controller - **Multi self-hosted runners on same VM**!
 

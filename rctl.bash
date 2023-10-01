@@ -201,8 +201,8 @@ function rctl::downloadRunner {
 #   $6: group, defaults to `default`
 #   $?: 0 if successful and non-zero otherwise
 function rctl::addRunner {
-    local usr="$1" org="$2" repo="$3" token="$4" extraLabels="$5" group="${6:-default}" \
-          labels="controller:rctl,username:$usr,hostname:$HOSTNAME,org:$org" name="$usr@$HOSTNAME" url='' tarpath=''
+    local usr="$1" org="$2" repo="$3" token="$4" extraLabels="$5" group="${6:-default}"
+    local labels="controller:rctl,username:$usr,hostname:$HOSTNAME,org:$org" name="$usr@$HOSTNAME" url='' tarpath=''
     str::isVarNotEmpty usr org || return $?
 
     tarpath="$(rctl::downloadRunner)" || return $?
