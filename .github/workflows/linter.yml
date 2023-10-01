@@ -1,0 +1,16 @@
+---
+name: Linter
+
+concurrency:
+  group: ${{ github.workflow }}@${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  calling:
+    uses: vbem/reusable/.github/workflows/superlinter.yml@v1
+...
