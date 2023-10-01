@@ -2,17 +2,17 @@
 [![Static Badge](https://img.shields.io/badge/self--hosted%20runners-teal?logo=GitHub&label=GitHub%20Actions)](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners)
 [![Linter](https://github.com/vbem/rctl/actions/workflows/linter.yml/badge.svg)](https://github.com/vbem/rctl/actions/workflows/linter.yml)
 
-Yet another GitHub action runners controller - **Multi self-hosted runners on same VM**!
+Yet another [self-hosted runners](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners) controller - **Multi self-hosted runners on same VM**!
 
 ## PAT
-This application a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with smallest permissions and shorest expiration time:
+This application requires a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with smallest permissions and shorest expiration time:
 
 PAT types | Repository level runners | Organization levle runners
 --- | --- | ---
 *Fine-grained PAT* (recommended) | assign the `administration` permission | assign the `organization_self_hosted_runners` permission
 *Classic PAT* | assign the `repo` scope | assign the `manage_runners:org` scope
 
-During runtime, set *PAT* in the environment varible named `RCTL_GITHUB_PAT`, such as in a `.env` file.
+During runtime, set *PAT* in the environment varible named `RCTL_GITHUB_PAT`, such as in a `.env` file. Only `add`/`del`/`rst`/`pat2token` sub-commands need the PAT.
 
 ## Usage
 ```text
