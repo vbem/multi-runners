@@ -23,8 +23,10 @@ declare -rg MR_RELEASE_URL
 declare -rg MR_GIHUB_API_BASEURL="${MR_GIHUB_API_BASEURL:-https://api.github.com}"
 # baseurl of GitHub service, defaults to https://github.com
 declare -rg MR_GIHUB_BASEURL="${MR_GIHUB_BASEURL:-https://github.com}"
-# baseurl of GitHub service, defaults to https://github.com
+# runners' local username prefix, defaults to `runner-`
 declare -rg MR_USER_PREFIX="${MR_USER_PREFIX:-runner-}"
+# URL of this application
+declare -rg MR_URL='https://github.com/vbem/multi-runners'
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # stdlib
@@ -214,7 +216,7 @@ function mr::addRunner {
 
     local name="$user@$HOSTNAME"
 
-    local labels="controller:$USER@$HOSTNAME:$DIR_THIS/$FILE_THIS"
+    local labels="controller:${MR_URL#https://},username:$user,hostname:$HOSTNAME"
     [[ -r /etc/os-release ]] && labels="$labels,os:$(source /etc/os-release && echo $ID-$VERSION_ID)"
     [[ -n "$repo" ]] && labels="$labels,$org/$repo" || labels="$labels,$org"
     [[ -n "$extraLabels" ]] && labels="$labels,$extraLabels"
@@ -285,7 +287,7 @@ function mr::test {
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # main
 
-HELP="$FILE_THIS - https://github.com/vbem/multi-runners
+HELP="$FILE_THIS - $MR_URL
 
 Environment variables:
   MR_GIHUB_BASEURL=$MR_GIHUB_BASEURL
