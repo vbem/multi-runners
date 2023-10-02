@@ -83,17 +83,20 @@ If environment variable `MR_RELEASE_URL` is empty, this applciation will downloa
 
 If limited by slow download speed, you can also manually download it to `/tmp/`, and set the `MR_RELEASE_URL` env as `/tmp/actions-runner-linux-x64-2.345.6.tar.gz`.
 
-### GitHUb Enterprise Server editions
+### GitHub Enterprise Server editions
 *GitHub Enterprise Server* editions usally have differnt server and API URL prefies then *github.com*, you can set them in environment variables `MR_GIHUB_BASEURL` and `MR_GIHUB_API_BASEURL`.
 
 ### Setup multi-runners on single host
 To setup multi-runners, you can simplify run following command mult times:
 ```bash
 ./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-1>
+./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-1>
+./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-1>
+./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-2>
 ./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-2>
 ./mr.bash add --org <ORG-NAME-2>
 ./mr.bash add --org <ORG-NAME-2>
-./mr.bash add --org <ORG-NAME-2>
+./mr.bash add --org <ORG-NAME-3>
 ....
 ```
 
