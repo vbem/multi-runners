@@ -69,6 +69,11 @@ RCTL_GITHUB_PAT='github_pat_***********'
 ENV_VAR_2=blablabla
 ```
 
+You can run following command to check whether or not your PAT can generate [GitHub Actions runners' registration-token](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/autoscaling-with-self-hosted-runners#authentication-requirements):
+```bash
+./mr.bash pat2token --org <ORG-NAME> --repo <REPO-NAME>
+```
+
 ### Download the latest version of GitHub Actions package
 If environment variable `MR_RELEASE_URL` is empty, this applciation will download the [latest version of GitHub Actions Agent Tar Package](github.com/actions/runner/releases) to local directory `/tmp/` during runtime.
 
