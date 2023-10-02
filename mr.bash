@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# https://github.com/vbem/rctl
+# https://github.com/vbem/multi-runners
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # common configurations
@@ -16,13 +16,15 @@ declare -rg DIR_THIS FILE_THIS
 
 # enviroment variables for customization
 # Github personal access token
-declare -rg RCTL_GITHUB_PAT
+declare -rg MR_GITHUB_PAT
 # download url of actions runner release, defaults to latest release on GitHub.com
-declare -rg RCTL_RELEASE_URL
+declare -rg MR_RELEASE_URL
 # baseurl of GitHub API, defaults to https://api.github.com
-declare -rg RCTL_GIHUB_API_BASEURL="${RCTL_GIHUB_API_BASEURL:-https://api.github.com}"
+declare -rg MR_GIHUB_API_BASEURL="${MR_GIHUB_API_BASEURL:-https://api.github.com}"
 # baseurl of GitHub service, defaults to https://github.com
-declare -rg RCTL_GIHUB_BASEURL="${RCTL_GIHUB_BASEURL:-https://github.com}"
+declare -rg MR_GIHUB_BASEURL="${MR_GIHUB_BASEURL:-https://github.com}"
+# baseurl of GitHub service, defaults to https://github.com
+declare -rg MR_USER_PREFIX="${MR_USER_PREFIX:-runner-}"
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # stdlib
@@ -107,38 +109,39 @@ function str::isVarNotEmpty {
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # functions
 
-# Setup the rctl local group
-# https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user
+# Check dependency of this application
 #   $?: 0 if successful and non-zero otherwise
-function rctl::setupGroup {
-    run::logIfFailed sudo groupadd -f 'rctl' || return $?
-    run::logIfFailed sudo groupadd -f 'docker' || return $?
-    run::logIfFailed sudo tee /etc/sudoers.d/rctl <<< '%rctl ALL=(ALL) NOPASSWD:ALL' > /dev/null || return $?
+function mr::pretest {
+    command -v jq > /dev/null || log::ifFailed 'Please intsall `jq`!' || return $?
+    str::isVarNotEmpty MR_GIHUB_API_BASEURL MR_GIHUB_BASEURL || return $?
 }
 
-# List all local users in group `rctl`
+# Add a local user for runner
+#   $1: username, defaults to self-increasing username
 #   $?: 0 if successful and non-zero otherwise
-#   stdout: line separated users
-function rctl::listUsers {
-    run::logIfFailed getent group 'rctl' | cut -d: -f4 | tr ',' '\n' || return $?
+#   stdout: username
+function mr::addUser {
+    local user="$1"
+    if [[ -z "$user" ]]; then
+        local -i index=0
+        while :; do
+            user="${MR_USER_PREFIX}$((index++))"
+            id -u "$user" &> /dev/null || break
+        done
+    fi
+    run::logIfFailed sudo tee /etc/sudoers.d/runners <<< '%runners ALL=(ALL) NOPASSWD:ALL' > /dev/null \
+    && run::logIfFailed sudo groupadd -f 'runners' >&2 \
+    && run::logIfFailed sudo groupadd -f 'docker' >&2 \
+    && run::logIfFailed sudo useradd -m -s /bin/bash -G 'runners,docker' "$user" >&2 || return $?
+    echo "$user"
 }
 
-# Add local username
-#   $1: username
-#   $?: 0 if successful and non-zero otherwise
-function rctl::addUser {
-    local usr="$1"
-    str::isVarNotEmpty usr || return $?
-    rctl::setupGroup && run::logIfFailed sudo useradd -m -s /bin/bash -G 'rctl,docker' "$usr" || return $?
-}
-
-# Delete local username
-#   $1: username
-#   $?: 0 if successful and non-zero otherwise
-function rctl::delUser {
-    local usr="$1"
-    str::isVarNotEmpty usr || return $?
-    run::logIfFailed sudo userdel -rf "$usr" || return $?
+# Print the number of processing units available to the current process
+#   stdout: number, defaults to 2
+function mr::nproc {
+    local -i num=0;
+    num="$(run::logIfFailed nproc)"
+    (( num > 0 )) && echo "$num" || echo 2
 }
 
 # Get time-limited registration token from PAT
@@ -147,20 +150,22 @@ function rctl::delUser {
 # https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
 #   $1: organization
 #   $2: repository, registration on organization if empty
-function rctl::pat2token {
+function mr::pat2token {
     local org="$1" repo="$2" api='' middle='' res=''
-    str::isVarNotEmpty RCTL_GITHUB_PAT org || return $?
+    str::isVarNotEmpty MR_GITHUB_PAT org || return $?
+    mr::pretest || return $?
 
     [[ -z "$repo" ]] && middle="orgs/$org" || middle="repos/$org/$repo"
-    api="$RCTL_GIHUB_API_BASEURL/$middle/actions/runners/registration-token"
+    api="$MR_GIHUB_API_BASEURL/$middle/actions/runners/registration-token"
 
-    log::stderr DEBUG "Calling $api for registration token"
+    log::stderr DEBUG "Calling API: $api"
     res="$(curl -Lsm 3 --retry 1 \
         -X POST \
         -H "Accept: application/vnd.github+json" \
-        -H "Authorization: Bearer ${RCTL_GITHUB_PAT}" \
+        -H "Authorization: Bearer ${MR_GITHUB_PAT}" \
         -H "X-GitHub-Api-Version: 2022-11-28" \
         "$api" )" || log::ifFailed $? "Call API failed: $api" || return $?
+
     jq -Mcre .token <<< "$res" || log::ifFailed $? "Parse registration-token failed! response: $res" || return $?
 }
 
@@ -170,10 +175,11 @@ function rctl::pat2token {
 # https://github.com/actions/runner/blob/main/docs/start/envlinux.md#install-net-core-3x-linux-dependencies
 #   $?: 0 if successful and non-zero otherwise
 #   stdout: local path of downloaded file
-function rctl::downloadRunner {
-    local url="$RCTL_RELEASE_URL" tarpath=''
+function mr::downloadRunner {
+    local url="$MR_RELEASE_URL" tarpath=''
 
     if [[ -z "$url" ]]; then
+        mr::pretest || return $?
         url="$(
             run::logIfFailed curl -Lsm 3 --retry 1 https://api.github.com/repos/actions/runner/releases/latest \
             | jq -Mcre '.assets[].browser_download_url|select(test("linux-x64-[^-]+\\.tar\\.gz"))'
@@ -193,36 +199,40 @@ function rctl::downloadRunner {
 }
 
 # Add GitHub Actions Runner by local username
-#   $1: username
+#   $1: username, optional
 #   $2: organization
 #   $3: repository, optional
 #   $4: runner registration token, optional
 #   $5: extra labels, optional
 #   $6: group, defaults to `default`
 #   $?: 0 if successful and non-zero otherwise
-function rctl::addRunner {
-    local usr="$1" org="$2" repo="$3" token="$4" extraLabels="$5" group="${6:-default}"
-    local labels="controller:rctl,username:$usr,hostname:$HOSTNAME,org:$org" name="$usr@$HOSTNAME" url='' tarpath=''
-    str::isVarNotEmpty usr org || return $?
+function mr::addRunner {
+    local user="$1" org="$2" repo="$3" token="$4" extraLabels="$5" group="${6:-default}"
+    str::isVarNotEmpty org || return $?
+    user="$(mr::addUser "$user")" || return $?
+    [[ -z "$token" ]] && { token="$(mr::pat2token "$org" "$repo")" || return $?; }
 
-    tarpath="$(rctl::downloadRunner)" || return $?
+    local name="$user@$HOSTNAME"
 
-    [[ -z "$token" ]] && { token="$(rctl::pat2token "$org" "$repo")" || return $?; }
-
-    rctl::addUser "$usr" || return $?
-
-    [[ -n "$repo" ]] && url="$RCTL_GIHUB_BASEURL/$org/$repo" || url="$RCTL_GIHUB_BASEURL/$org"
+    local labels="controller:vbem/multi-runners,username:$user,hostname:$HOSTNAME,org:$org"
     [[ -n "$repo" ]] && labels="$labels,repo:$repo"
     [[ -r /etc/os-release ]] && labels="$labels,os:$(source /etc/os-release && echo $ID-$VERSION_ID)"
     [[ -n "$extraLabels" ]] && labels="$labels,$extraLabels"
 
-    log::stderr DEBUG "Adding runner in local user '$usr' for $url"
-    run::logIfFailed sudo -Hiu "$usr" -- bash -eo pipefail <<- __
-        mkdir -p runner/rctl.d && cd runner
-        echo -n '$org' > rctl.d/org && echo -n '$repo' > rctl.d/repo
-        tar -xzf "$tarpath"
+    local url=''
+    [[ -n "$repo" ]] && url="$MR_GIHUB_BASEURL/$org/$repo" || url="$MR_GIHUB_BASEURL/$org"
+
+    local tarpath=''
+    tarpath="$(mr::downloadRunner)" || return $?
+
+    log::stderr DEBUG "Adding runner into local user '$user' for $url"
+    run::logIfFailed sudo -Hiu "$user" -- bash -eo pipefail <<- __
+        mkdir -p runner/mr.d && cd runner/mr.d
+        echo -n '$org' > org && echo -n '$repo' > repo && echo -n '$url' > url
+        echo -n '$name' > name && echo -n '$labels' > labels && echo -n '$tarpath' > tarpath
+        cd .. && tar -xzf "$tarpath"
         ./config.sh --unattended --replace --url '$url' --token '$token' --name '$name' --labels '$labels' --runnergroup '$group'
-        sudo ./svc.sh install '$usr' && sudo ./svc.sh start
+        sudo ./svc.sh install '$user' && sudo ./svc.sh start
 __
 }
 
@@ -232,100 +242,88 @@ __
 #   $3: repository, optional
 #   $4: runner registration token, optional
 #   $?: 0 if successful and non-zero otherwise
-function rctl::delRunner {
-    local usr="$1" org="$2" repo="$3" token="$4"
-    str::isVarNotEmpty usr || return $?
+function mr::delRunner {
+    local user="$1" org="$2" repo="$3" token="$4"
+    str::isVarNotEmpty user || return $?
 
     if [[ -z "$token" ]]; then
-        if [[ -z "$org" ]]; then
-            org="$(run::logIfFailed sudo -Hiu "$usr" -- cat runner/rctl.d/org)" \
-            && repo="$(run::logIfFailed sudo -Hiu "$usr" -- cat runner/rctl.d/repo)" \
-            || return $?
-        fi
-        token="$(rctl::pat2token "$org" "$repo")" || return $?
+        [[ -z "$org" ]] && org="$(run::logIfFailed sudo -Hiu "$user" -- cat runner/mr.d/org)"
+        [[ -z "$repo" ]] && repo="$(run::logIfFailed sudo -Hiu "$user" -- cat runner/mr.d/repo)"
+        token="$(mr::pat2token "$org" "$repo")" || return $?
     fi
 
-    log::stderr DEBUG "Deleting runner in local user '$usr'"
-    run::logIfFailed sudo -Hiu "$usr" -- bash <<- __
+    log::stderr DEBUG "Deleting runner local user '$user'"
+    run::logIfFailed sudo -Hiu "$user" -- bash <<- __
         cd runner
         sudo ./svc.sh stop && sudo ./svc.sh uninstall
         ./config.sh remove --token '$token'
 __
-    rctl::delUser "$usr" || return $?
+    run::logIfFailed sudo userdel -rf "$user" || return $?
 }
 
-# Reset GitHub Actions Runner by local username
-#   $@: see `rctl::addRunner` and `rctl::delRunner`
-#   $?: see `rctl::addRunner`
-function rctl::rstRunner {
-    rctl::delRunner "$@"
-    rctl::addRunner "$@"
-}
-
-# Display status of specified runner
-#   $1: username, optional, list all if empty
+# List all runners
 #   $?: 0 if successful and non-zero otherwise
-function rctl::statusRunner {
-    local usr="$1"
-    if [[ -z "$usr" ]]; then
-        run::logIfFailed systemctl list-units -al --no-pager 'actions.runner.*' || return $?
-    else
-        run::logIfFailed sudo -Hiu "$usr" -- bash <<< "cd runner && sudo ./svc.sh status" || return $?
-    fi
+#   stdout: all runners
+function mr::listRunners {
+    local users=''
+    mr::pretest || return $?
+    users="$(run::logIfFailed getent group 'runners' | cut -d: -f4 | tr ',' '\n')" || return $?
+    while read -r user; do [[ -z "$user" ]] && continue
+        echo -n "$user"
+        echo -n " $(sudo -Hiu "$user" -- du -h --summarize|cut -f1)"
+        echo -n " $(sudo -Hiu "$user" -- jq -Mcre .gitHubUrl runner/.runner)"
+        echo
+    done <<< "$users" # user
+    run::logIfFailed systemctl list-units -al --no-pager 'actions.runner.*' >&2 || return $?
 }
 
 # Temporary test
-function rctl::test {
+function mr::test {
     :
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # main
 
-HELP="$FILE_THIS - https://github.com/vbem/rctl
+HELP="$FILE_THIS - https://github.com/vbem/multi-runners
 
 Environment variables:
-  RCTL_GIHUB_BASEURL=$RCTL_GIHUB_BASEURL
-  RCTL_GIHUB_API_BASEURL=$RCTL_GIHUB_API_BASEURL
-  RCTL_RELEASE_URL=$RCTL_RELEASE_URL
-  RCTL_GITHUB_PAT=${RCTL_GITHUB_PAT::11}${RCTL_GITHUB_PAT:+****}
+  MR_GIHUB_BASEURL=$MR_GIHUB_BASEURL
+  MR_GIHUB_API_BASEURL=$MR_GIHUB_API_BASEURL
+  MR_RELEASE_URL=${MR_RELEASE_URL:-<latest on github.com/actions/runner/releases>}
+  MR_GITHUB_PAT=${MR_GITHUB_PAT::11}${MR_GITHUB_PAT:+***}
 
 Sub-commands:
-  add       Add a self-hosted runner on this host
-            e.g. $FILE_THIS add --usr runner-0 --org org-name --labels cloud:aliyun,region:cn-shanghai
-  del       Delete a self-hosted runner on this host
-            e.g. $FILE_THIS del --usr runner-1
-  rst       Reset via attempt to del and then add
-            e.g. $FILE_THIS reset --usr runner-2 --org org-name --repo repo-name
-  status    Display status of specified runner
-            e.g. $FILE_THIS status
-            e.g. $FILE_THIS status --usr runner-3
-  users     List all runners' username on this host
-            e.g. $FILE_THIS users
+  add       Add one self-hosted runner on this host
+            e.g. $FILE_THIS add --org ORG --repo REPO --labels cloud:ali,region:cn-shanghai
+  del       Delete one self-hosted runner on this host
+            e.g. $FILE_THIS del --user runner-1
+  list      List all runners on this host
+            e.g. $FILE_THIS list
   download  Download GitHub Actions Runner release tar to /tmp/
-            Detect latest on https://github.com/actions/runner/releases if RCTL_RELEASE_URL empty.
+            Detect latest on github.com/actions/runner/releases if MR_RELEASE_URL empty
             e.g. $FILE_THIS download
-  pat2token Get runner registration token from GitHub PAT (RCTL_GITHUB_PAT)
+  pat2token Get runner registration token from GitHub PAT (MR_GITHUB_PAT)
             e.g. $FILE_THIS pat2token --org SOME_OWNER --repo SOME_REPO
 
 Options:
-  --usr     Linux local username of runner
   --org     GitHub organization name
   --repo    GitHub repository name, registration on organization-level if empty
+  --user    Linux local username of runner
   --labels  Extra labels for the runner
-  --token   Runner registration token, takes precedence over RCTL_GITHUB_PAT
+  --token   Runner registration token, takes precedence over MR_GITHUB_PAT
   -h --help Show this help.
 "
 declare -rg HELP
 
 # CLI arguments parser.
 #   $?: 0 if successful and non-zero otherwise
-function rctl::main {
+function mr::main {
     local getopt_output='' subCmd=''
-    local org='' repo='' usr='' labels='' token='' group=''
+    local org='' repo='' user='' labels='' token='' group=''
 
     # parse options into variables
-    getopt_output="$(getopt -o h -l help,org:,repo:,usr:,labels:,token: -n "$FILE_THIS" -- "$@")"
+    getopt_output="$(getopt -o h -l help,org:,repo:,user:,labels:,token: -n "$FILE_THIS" -- "$@")"
     log::ifFailed $? "getopt failed!" || return $?
     eval set -- "$getopt_output"
 
@@ -334,7 +332,7 @@ function rctl::main {
             -h|--help) echo -n "$HELP" && return ;;
             --org) org="$2"; shift 2 ;;
             --repo) repo="$2"; shift 2 ;;
-            --usr) usr="$2"; shift 2 ;;
+            --user) user="$2"; shift 2 ;;
             --labels) labels="$2"; shift 2 ;;
             --token) token="$2"; shift 2 ;;
             --group) group="$2"; shift 2 ;;
@@ -346,17 +344,16 @@ function rctl::main {
     # parse sub-commands into functions
     subCmd="$1"; shift
     case "$subCmd" in
-        add) rctl::addRunner "$usr" "$org" "$repo" "$token" "$labels" "$group";;
-        del) rctl::delRunner "$usr" "$org" "$repo" "$token" ;;
-        rst) rctl::rstRunner "$usr" "$org" "$repo" "$token" "$labels" "$group";;
-        status) rctl::statusRunner "$usr" ;;
-        users) rctl::listUsers ;;
-        download) rctl::downloadRunner ;;
-        pat2token) rctl::pat2token "$org" "$repo" ;;
+        add) mr::addRunner "$user" "$org" "$repo" "$token" "$labels" "$group";;
+        del) mr::delRunner "$user" "$org" "$repo" "$token" ;;
+        list) mr::listRunners ;;
+        status) mr::statusRunner "$user" ;;
+        download) mr::downloadRunner ;;
+        pat2token) mr::pat2token "$org" "$repo" ;;
         help|'') echo -n "$HELP" >&2 ;;
-        test) rctl::test "$@" ;;
+        test) mr::test "$@" ;;
         *) log::stderr ERROR "Invalid command '$1'! See '$FILE_THIS help'."; return 255 ;;
     esac
 }
 
-rctl::main "$@"
+mr::main "$@"

@@ -1,52 +1,110 @@
-# rctl
+# multi-runners
 [![Static Badge](https://img.shields.io/badge/self--hosted%20runners-teal?logo=GitHub&label=GitHub%20Actions)](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners)
 [![Linter](https://github.com/vbem/rctl/actions/workflows/linter.yml/badge.svg)](https://github.com/vbem/rctl/actions/workflows/linter.yml)
 
-Yet another [self-hosted runners](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners) controller - **Multi self-hosted runners on same VM**!
+**Multi self-hosted GitHub action runners on same host!**
 
-## PAT
-This application requires a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with smallest permissions and shorest expiration time:
+## Intorduction
+This application is designed for controlling multi [self-hosted GitHub Action runners](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners) on single host, when [Actions Runner Controller (ARC)](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller/quickstart-for-actions-runner-controller) is not feasible in your engineering environment. This applciation has following advantages:
+- Only Linux based hosts required.
+- Simple as more as possible.
+- Lightweight wapper of offcial self-hosted runner.
+- Both *github.com* and *GitHub Enterprise* are suppport.
+- Both *organizatuon* and *repository* level runners are supported.
+
+## Usage
+```text
+mr.bash - https://github.com/vbem/multi-runners
+
+Environment variables:
+  MR_GIHUB_BASEURL=https://github.com
+  MR_GIHUB_API_BASEURL=https://api.github.com
+  MR_RELEASE_URL=<latest on github.com/actions/runner/releases>
+  MR_GITHUB_PAT=github_pat_***
+
+Sub-commands:
+  add       Add one self-hosted runner on this host
+            e.g. mr.bash add --org ORG --repo REPO --labels cloud:ali,region:cn-shanghai
+  del       Delete one self-hosted runner on this host
+            e.g. mr.bash del --user runner-1
+  list      List all runners on this host
+            e.g. mr.bash list
+  download  Download GitHub Actions Runner release tar to /tmp/
+            Detect latest on github.com/actions/runner/releases if MR_RELEASE_URL empty
+            e.g. mr.bash download
+  pat2token Get runner registration token from GitHub PAT (MR_GITHUB_PAT)
+            e.g. mr.bash pat2token --org SOME_OWNER --repo SOME_REPO
+
+Options:
+  --org     GitHub organization name
+  --repo    GitHub repository name, registration on organization-level if empty
+  --user    Linux local username of runner
+  --labels  Extra labels for the runner
+  --token   Runner registration token, takes precedence over MR_GITHUB_PAT
+  -h --help Show this help.
+```
+
+### Download this application
+This applciation reuqires to be run under a Linux user with non-password sudo permission (`%runners ALL=(ALL) NOPASSWD:ALL`), such as `ec2-user` and etc. It's also fine to run this application as `root`:
+
+```bash
+git clone https://github.com/vbem/multi-runners.git
+cd multi-runners
+./mr.bash --help
+```
+
+### Setup PAT
+This application requires a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with smallest permissions and shorest expiration time. Only `add`/`del`/`pat2token` sub-commands need this PAT. You can remove it on *GitHub* after multi-runners' setup.
 
 PAT types | Repository level runners | Organization levle runners
 --- | --- | ---
 *Fine-grained PAT* (recommended) | assign the `administration` permission | assign the `organization_self_hosted_runners` permission
 *Classic PAT* | assign the `repo` scope | assign the `manage_runners:org` scope
 
-During runtime, set *PAT* in the environment varible named `RCTL_GITHUB_PAT`, such as in a `.env` file. Only `add`/`del`/`rst`/`pat2token` sub-commands need the PAT.
+During runtime, you can set your *PAT* in environment varible `RCTL_GITHUB_PAT`. **To simplify subsequent execution, you can define any environment variable in `.env` file**. For example,
 
-## Usage
-```text
-rctl.bash - https://github.com/vbem/rctl
+```bash
+# .env file under the directory of this application
+RCTL_GITHUB_PAT='github_pat_***********'
+ENV_VAR_2=blablabla
+```
 
-Environment variables:
-  RCTL_GIHUB_BASEURL=https://github.com
-  RCTL_GIHUB_API_BASEURL=https://api.github.com
-  RCTL_RELEASE_URL=
-  RCTL_GITHUB_PAT=ghp_45ExfQj****
+### Download the latest version of GitHub Actions package
+If environment variable `MR_RELEASE_URL` is empty, this applciation will download the [latest version of GitHub Actions Agent Tar Package](github.com/actions/runner/releases) to local directory `/tmp/` during runtime.
 
-Sub-commands:
-  add       Add a self-hosted runner on this host
-            e.g. rctl.bash add --usr runner-0 --org org-name --labels cloud:aliyun,region:cn-shanghai
-  del       Delete a self-hosted runner on this host
-            e.g. rctl.bash del --usr runner-1
-  rst       Reset via attempt to del and then add
-            e.g. rctl.bash reset --usr runner-2 --org org-name --repo repo-name
-  status    Display status of specified runner
-            e.g. rctl.bash status
-            e.g. rctl.bash status --usr runner-3
-  users     List all runners' username on this host
-            e.g. rctl.bash users
-  download  Download GitHub Actions Runner release tar to /tmp/
-            Detect latest on https://github.com/actions/runner/releases if RCTL_RELEASE_URL empty.
-            e.g. rctl.bash download
-  pat2token Get runner registration token from GitHub PAT (RCTL_GITHUB_PAT)
-            e.g. rctl.bash pat2token --org SOME_OWNER --repo SOME_REPO
+```bash
+./mr.bash download
+```
 
-Options:
-  --usr     Linux local username of runner
-  --org     GitHub organization name
-  --repo    GitHub repository name, registration on organization-level if empty
-  --labels  Extra labels for the runner
-  --token   Runner registration token, takes precedence over RCTL_GITHUB_PAT
-  -h --help Show this help.
+If limited by slow download speed, you can also manually download it to `/tmp/`, and set the `MR_RELEASE_URL` env as `/tmp/actions-runner-linux-x64-2.345.6.tar.gz`.
+
+### GitHUb Enterprise Server editions
+*GitHub Enterprise Server* editions usally have differnt server and API URL prefies then *github.com*, you can set them in environment variables `MR_GIHUB_BASEURL` and `MR_GIHUB_API_BASEURL`.
+
+### Setup multi-runners on single host
+To setup multi-runners, you can simplify run following command mult times:
+```bash
+./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-1>
+./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-2>
+./mr.bash add --org <ORG-NAME-2>
+./mr.bash add --org <ORG-NAME-2>
+./mr.bash add --org <ORG-NAME-2>
+....
+```
+
+### List all runners on current host
+This application also wrappered status check of runners.
+```bash
+./mr.bash list
+```
+Which outpus,
+```bash
+runner-0 537M running https://github.com/<ORG-NAME-1>/<REPO-NAME-1>
+runner-1 537M running https://github.com/<ORG-NAME-2>
+```
+
+### Delete an existing runner
+You can delete an existing runner by its Linux user name.
+```bash
+./mr.bash del --user <runner-?>
 ```
