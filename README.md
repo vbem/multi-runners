@@ -112,7 +112,7 @@ runner-1 537M running https://github.com/<ORG-NAME-2>
 ```
 
 ### Delete an existing runner
-You can delete an existing runner by its Linux user name.
+You can delete an existing runner by its Linux username.
 ```bash
 ./mr.bash del --user <runner-?>
 ```
