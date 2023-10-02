@@ -75,7 +75,7 @@ You can run following command to check whether or not your PAT can generate [Git
 ```
 
 ### Download the latest version of GitHub Actions package
-If environment variable `MR_RELEASE_URL` is empty, this applciation will download the [latest version of GitHub Actions Agent Tar Package](github.com/actions/runner/releases) to local directory `/tmp/` during runtime.
+If environment variable `MR_RELEASE_URL` is empty, this applciation will download the [latest version of GitHub Actions runners tar package](https://github.com/actions/runner/releases) to local directory `/tmp/` during runtime.
 
 ```bash
 ./mr.bash download
