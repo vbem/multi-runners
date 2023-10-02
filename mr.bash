@@ -214,9 +214,9 @@ function mr::addRunner {
 
     local name="$user@$HOSTNAME"
 
-    local labels="controller:vbem/multi-runners,username:$user,hostname:$HOSTNAME,org:$org"
-    [[ -n "$repo" ]] && labels="$labels,repo:$repo"
+    local labels="controller:$USER@$HOSTNAME:$DIR_THIS/$FILE_THIS"
     [[ -r /etc/os-release ]] && labels="$labels,os:$(source /etc/os-release && echo $ID-$VERSION_ID)"
+    [[ -n "$repo" ]] && labels="$labels,$org/$repo" || labels="$labels,$org"
     [[ -n "$extraLabels" ]] && labels="$labels,$extraLabels"
 
     local url=''

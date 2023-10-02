@@ -116,3 +116,13 @@ You can delete an existing runner by its Linux username.
 ```bash
 ./mr.bash del --user <runner-?>
 ```
+
+### Specify runner in workflow file
+In [`jobs.<job_id>.runs-on`](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idruns-on), target runners can be based on the labels as follows via [GitHub context](https://docs.github.com/en/actions/learn-github-actions/contexts#github-context):
+```yaml
+# For organization level self-hosted runners
+runs-on: [self-hosted, ${{ github.repository_owner }}]
+
+# For repository level self-hosted runners
+runs-on: [self-hosted, ${{ github.repository }}]
+```
