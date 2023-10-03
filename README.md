@@ -89,15 +89,17 @@ If limited by slow download speed, you can also manually download it to `/tmp/`,
 ### Setup multi-runners on single host
 To setup multi-runners, you can simplify run following command mult times:
 ```bash
+# 1 runner for repository `<ORG-NAME-1>/<REPO-NAME-1>`
 ./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-1>
-./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-1>
-./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-1>
+
+# 2 runners for repository `<ORG-NAME-1>/<REPO-NAME-2>`
 ./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-2>
 ./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-2>
+
+# 3 runners for organization `<ORG-NAME-2>`
 ./mr.bash add --org <ORG-NAME-2>
 ./mr.bash add --org <ORG-NAME-2>
-./mr.bash add --org <ORG-NAME-3>
-....
+./mr.bash add --org <ORG-NAME-2>
 ```
 
 ### List all runners on current host
@@ -108,7 +110,11 @@ This application also wrappered status check of runners.
 Which outpus,
 ```bash
 runner-0 537M running https://github.com/<ORG-NAME-1>/<REPO-NAME-1>
-runner-1 537M running https://github.com/<ORG-NAME-2>
+runner-1 537M running https://github.com/<ORG-NAME-1>/<REPO-NAME-2>
+runner-2 537M running https://github.com/<ORG-NAME-1>/<REPO-NAME-2>
+runner-3 537M running https://github.com/<ORG-NAME-2>
+runner-4 537M running https://github.com/<ORG-NAME-2>
+runner-5 537M running https://github.com/<ORG-NAME-2>
 ```
 
 ### Delete an existing runner
