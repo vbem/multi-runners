@@ -6,12 +6,12 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: null
 
 jobs:
   test:
     runs-on: [self-hosted, ${{ github.repository }}]
-    
+
   steps:
     - run: |
         env
