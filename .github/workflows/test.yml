@@ -12,11 +12,11 @@ jobs:
   test:
     runs-on: ['self-hosted', '${{ github.repository }}']
 
-  steps:
-    - run: |
-        env
-    - run: |
-        curl myip.ipip.net
-    - run: |
-        curl -s -4 icanhazip.com
+    steps:
+      - run: |
+          env
+      - run: |
+          curl myip.ipip.net
+      - run: |
+          curl -s -4 icanhazip.com
 ...
