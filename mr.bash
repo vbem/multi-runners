@@ -207,12 +207,14 @@ function mr::downloadRunner {
 #   $4: runner registration token, optional
 #   $5: extra labels, optional
 #   $6: group, defaults to `default`
+#   $7: lines to set in runner's '.env' files, optional
 #   $?: 0 if successful and non-zero otherwise
 function mr::addRunner {
-    local user="$1" org="$2" repo="$3" token="$4" extraLabels="$5" group="${6:-default}"
+    local user="$1" org="$2" repo="$3" token="$4" extraLabels="$5" group="${6:-default}" dotenv="$7" tarpath=''
     str::isVarNotEmpty org || return $?
-    user="$(mr::addUser "$user")" || return $?
+    tarpath="$(mr::downloadRunner)" || return $?
     [[ -z "$token" ]] && { token="$(mr::pat2token "$org" "$repo")" || return $?; }
+    user="$(mr::addUser "$user")" || return $?
 
     local name="$user@$HOSTNAME"
 
@@ -224,15 +226,13 @@ function mr::addRunner {
     local url=''
     [[ -n "$repo" ]] && url="$MR_GIHUB_BASEURL/$org/$repo" || url="$MR_GIHUB_BASEURL/$org"
 
-    local tarpath=''
-    tarpath="$(mr::downloadRunner)" || return $?
-
     log::stderr DEBUG "Adding runner into local user '$user' for $url"
     run::logIfFailed sudo -Hiu "$user" -- bash -eo pipefail <<- __
         mkdir -p runner/mr.d && cd runner/mr.d
         echo -n '$org' > org && echo -n '$repo' > repo && echo -n '$url' > url
         echo -n '$name' > name && echo -n '$labels' > labels && echo -n '$tarpath' > tarpath
         cd .. && tar -xzf "$tarpath"
+        echo "$dotenv" >> .env
         ./config.sh --unattended --replace --url '$url' --token '$token' --name '$name' --labels '$labels' --runnergroup '$group'
         sudo ./svc.sh install '$user' && sudo ./svc.sh start
 __
@@ -251,7 +251,7 @@ function mr::delRunner {
     if [[ -z "$token" ]]; then
         [[ -z "$org" ]] && org="$(run::logIfFailed sudo -Hiu "$user" -- cat runner/mr.d/org)"
         [[ -z "$repo" ]] && repo="$(run::logIfFailed sudo -Hiu "$user" -- cat runner/mr.d/repo)"
-        token="$(mr::pat2token "$org" "$repo")" || return $?
+        token="$(mr::pat2token "$org" "$repo")"
     fi
 
     log::stderr DEBUG "Deleting runner local user '$user'"
@@ -314,6 +314,7 @@ Options:
   --user    Linux local username of runner
   --labels  Extra labels for the runner
   --token   Runner registration token, takes precedence over MR_GITHUB_PAT
+  --dotenv  The lines to set in runner's '.env' files
   -h --help Show this help.
 "
 declare -rg HELP
@@ -322,10 +323,10 @@ declare -rg HELP
 #   $?: 0 if successful and non-zero otherwise
 function mr::main {
     local getopt_output='' subCmd=''
-    local org='' repo='' user='' labels='' token='' group=''
+    local org='' repo='' user='' labels='' token='' group='' dotenv=''
 
     # parse options into variables
-    getopt_output="$(getopt -o h -l help,org:,repo:,user:,labels:,token: -n "$FILE_THIS" -- "$@")"
+    getopt_output="$(getopt -o h -l help,org:,repo:,user:,labels:,token:,group:,dotenv: -n "$FILE_THIS" -- "$@")"
     log::ifFailed $? "getopt failed!" || return $?
     eval set -- "$getopt_output"
 
@@ -338,6 +339,7 @@ function mr::main {
             --labels) labels="$2"; shift 2 ;;
             --token) token="$2"; shift 2 ;;
             --group) group="$2"; shift 2 ;;
+            --dotenv) dotenv="$dotenv$2"$'\n'; shift 2 ;;
             --) shift ; break ;;
             *) log::stderr ERROR "Invalid option '$1'! See '$FILE_THIS help'."; return 255;;
         esac
@@ -346,7 +348,7 @@ function mr::main {
     # parse sub-commands into functions
     subCmd="$1"; shift
     case "$subCmd" in
-        add) mr::addRunner "$user" "$org" "$repo" "$token" "$labels" "$group";;
+        add) mr::addRunner "$user" "$org" "$repo" "$token" "$labels" "$group" "$dotenv";;
         del) mr::delRunner "$user" "$org" "$repo" "$token" ;;
         list) mr::listRunners ;;
         status) mr::statusRunner "$user" ;;

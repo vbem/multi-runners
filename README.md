@@ -132,3 +132,14 @@ runs-on: [self-hosted, ${{ github.repository_owner }}]
 # For repository level self-hosted runners
 runs-on: [self-hosted, ${{ github.repository }}]
 ```
+
+### Set environment variables into runners process
+As described in GitHub official document, there's an approach to [inject environment variables into runners process](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/using-a-proxy-server-with-self-hosted-runners#using-a-env-file-to-set-the-proxy-configuration) via the `.env` file before configuring or starting the self-hosted runners. This can be achieved via the `--dotenv` option, for example:
+```bash
+./mr.bash add --org <ORG-NAME> --repo <REPO-NAME> --dotenv 'TZ=Asia/Shanghai' --dotenv 'PATH=\$PATH:/mybin'
+```
+Then the following lines will be added to `.env` file located in self-hosted runner's directory before its configuring and starting:
+```plain
+TZ=Asia/Shanghai
+PATH=$PATH:/mybin
+```
