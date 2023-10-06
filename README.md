@@ -2,18 +2,18 @@
 [![Static Badge](https://img.shields.io/badge/self--hosted%20runners-teal?logo=GitHub&label=GitHub%20Actions)](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners)
 [![Linter](https://github.com/vbem/multi-runners/actions/workflows/linter.yml/badge.svg)](https://github.com/vbem/multi-runners/actions/workflows/linter.yml)
 
-**Multi self-hosted GitHub action runners on single host!**
+🌈🌈🌈 **Multi self-hosted GitHub action runners on single host!** 🌈🌈🌈
 
 ## Introduction
 This application is designed for controlling multi [self-hosted GitHub Action runners](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners) on single host, when [Actions Runner Controller (ARC)](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller/quickstart-for-actions-runner-controller) is not feasible in your engineering environment. This application has following advantages:
-- Only Linux based hosts required.
-- Simple as more as possible.
+- Only single Linux host required.
+- Simple as more as possible, single Bash script.
 - Lightweight wrapper of official self-hosted runner.
 - Both *github.com* and *GitHub Enterprise* are support.
 - Both *organization* and *repository* level runners are supported.
 
 ## Usage
-```text
+```plain
 mr.bash - https://github.com/vbem/multi-runners
 
 Environment variables:
@@ -46,7 +46,7 @@ Options:
 ```
 
 ### Download this application
-This application requires to be run under a Linux user with non-password sudo permission (`%runners ALL=(ALL) NOPASSWD:ALL`), such as `ec2-user` and etc. It's also fine to run this application as `root`:
+This application requires to be run under a Linux user with **non-password sudo permission** (`%runners ALL=(ALL) NOPASSWD:ALL`). It's also fine to run this application by `root`:
 
 ```bash
 git clone https://github.com/vbem/multi-runners.git
@@ -119,7 +119,7 @@ runner-5 537M running https://github.com/<ORG-NAME-2>
 ```
 
 ### Delete an existing runner
-You can delete an existing runner by its Linux username.
+You can delete an existing runner by its local Linux username.
 ```bash
 ./mr.bash del --user <runner-?>
 ```
@@ -128,10 +128,10 @@ You can delete an existing runner by its Linux username.
 In [`jobs.<job_id>.runs-on`](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idruns-on), target runners can be based on the labels as follows via [GitHub context](https://docs.github.com/en/actions/learn-github-actions/contexts#github-context):
 ```yaml
 # For organization level self-hosted runners
-runs-on: [self-hosted, ${{ github.repository_owner }}]
+runs-on: ['self-hosted', '${{ github.repository_owner }}']
 
 # For repository level self-hosted runners
-runs-on: [self-hosted, ${{ github.repository }}]
+runs-on: ['self-hosted', '${{ github.repository }}']
 ```
 
 ### Set environment variables into runners process
@@ -162,11 +162,11 @@ A host *VM-A* is required for self-hosted runners, which is placed in this count
 - Can access endpoints of this country branch
 - Can NOT access *GitHub* directly or stably
 
-A tiny specification host *VM-B* is required as *Remote Proxy*, which is deployed in a place that:
+A tiny specification host *VM-B* is required as ***Remote Proxy***, which is deployed in a place that:
 - Can access *GitHub* directly and stably
 - Can be accessed by *VM-A* directly and stably
 
-Meanwhile, outbound traffics from *VM-A* MUST be routed by predefined rules:
+Meanwhile, **outbound traffics from *VM-A* MUST be routed by predefined rules**:
 - [Requests to *GitHub* endpoints](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#communication-requirements) and non-local endpoints should be forward to the *Remote Proxy* on *VM-B*
 - Requests to local endpoints should be handled directly
 
@@ -174,9 +174,9 @@ Let's implement this solution. 🧐
 
 On *VM-B*, we can setup a *Remote Proxy* that's not easy to be blocked by the firewall, such as [*SS*](https://github.com/shadowsocks), [*TJ*](https://github.com/trojan-gfw), [*XR*](https://github.com/XTLS), etc. These particular proxies have their own deployment and configuration methods. Please read their documents for more information. It's advised to set the outbound IP of *VM-A* as the only whitelist of the *Remote Proxy* port on *VM-B* to avoid active detection from the firewall.
 
-Before setup runners on *VM-A*, we need a [*Local Proxy*](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/using-a-proxy-server-with-self-hosted-runners) on *VM-A*.
+Before setup runners on *VM-A*, we need a [***Local Proxy***](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/using-a-proxy-server-with-self-hosted-runners) on *VM-A*.
 
-Usually firstly we need to setup the client of selected *Remote Proxy* which exposes a SOCKS5 port on localhost (this local SOCKS5 will unconditionally forward all traffics to *VM-B*), and then setup a [*privoxy*](https://www.privoxy.org/) on top of previous local SOCKS5 for [domain based forwarding](https://www.privoxy.org/user-manual/config.html#SOCKS). These configurations are complex and prone to errors. Via [*Clash*](https://github.com/Dreamacro/clash), we can combine both client of *Remote Proxy* and domain based forwarding into only one *Local Proxy*. The example configuration file and startup script of *Clash* and given in this repo's [clash.example/](clash.example/) directory.
+Usually firstly we need to setup the client of selected *Remote Proxy* which exposes a SOCKS5 proxy on *VM-A* (this local SOCKS5 localhost port will unconditionally forward all traffics to *VM-B*), and then setup a [*privoxy*](https://www.privoxy.org/) on top of previous local SOCKS5 for [domain based forwarding](https://www.privoxy.org/user-manual/config.html#SOCKS). These configurations are complex and prone to errors. Via [*Clash*](https://github.com/Dreamacro/clash), we can combine both client of *Remote Proxy* and domain based forwarding into only one *Local Proxy*. The example configuration file and startup script of *Clash* and given in this repo's [clash.example/](clash.example/) directory.
 
 Assume the *Local Proxy* was launched as `socks5a://localhost:7890`, we can test it via following commands on *VM-A*:
 ```bash
