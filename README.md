@@ -153,43 +153,43 @@ In such a bad situation, we still need to setup reliable self-hosted runners in 
 
 A cost-conscious solution can be described as following architecture:
 ```plain
-Endpoints <-------- VM-A ----> Firewall ----> VM-B ----> GitHub
- \                   /                         |  \
-  -------------------                          |   ----> Other endpoints
- Branch office network                    Remote Proxy
+Endpoints <-------- VM-Runners ----> Firewall ----> VM-Proxy ----> GitHub
+ \                          /                          |    \
+  --------------------------                           |     ----> Other endpoints
+     Branch office network                        Remote Proxy
 ```
-A host *VM-A* is required for self-hosted runners, which is placed in this country and:
+A host *VM-Runners* is required for self-hosted runners, which is placed in this country and:
 - Can access endpoints of this country branch
 - Can NOT access *GitHub* directly or stably
 
-A tiny specification host *VM-B* is required as ***Remote Proxy***, which is deployed in a place that:
+A tiny specification host *VM-Proxy* is required as ***Remote Proxy***, which is deployed in a place that:
 - Can access *GitHub* directly and stably
-- Can be accessed by *VM-A* directly and stably
+- Can be accessed by *VM-Runners* directly and stably
 
-Meanwhile, **outbound traffics from *VM-A* MUST be routed by predefined rules**:
-- [Requests to *GitHub* endpoints](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#communication-requirements) and non-local endpoints should be forward to the *Remote Proxy* on *VM-B*
+Meanwhile, **outbound traffics from *VM-Runners* MUST be routed by predefined rules**:
+- [Requests to *GitHub* endpoints](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#communication-requirements) and non-local endpoints should be forward to the *Remote Proxy* on *VM-Proxy*
 - Requests to local endpoints should be handled directly
 
 Let's implement this solution. 🧐
 
-On *VM-B*, we can setup a *Remote Proxy* that's not easy to be blocked by the firewall, such as [*SS*](https://github.com/shadowsocks), [*TJ*](https://github.com/trojan-gfw), [*XR*](https://github.com/XTLS), etc. These particular proxies have their own deployment and configuration methods. Please read their documents for more information. It's advised to set the outbound IP of *VM-A* as the only whitelist of the *Remote Proxy* port on *VM-B* to avoid active detection from the firewall.
+On *VM-Proxy*, we can setup a *Remote Proxy* that's not easy to be blocked by the firewall, such as [*SS*](https://github.com/shadowsocks), [*TJ*](https://github.com/trojan-gfw), [*XR*](https://github.com/XTLS), etc. These particular proxies have their own deployment and configuration methods. Please read their documents for more information. It's advised to set the outbound IP of *VM-Runners* as the only whitelist of the *Remote Proxy* port on *VM-Proxy* to avoid active detection from the firewall.
 
-Before setup runners on *VM-A*, we need a [***Local Proxy***](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/using-a-proxy-server-with-self-hosted-runners) on *VM-A*.
+Before setup runners on *VM-Runners*, we need a [***Local Proxy***](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/using-a-proxy-server-with-self-hosted-runners) on *VM-Runners*.
 
-Usually firstly we need to setup the client of selected *Remote Proxy* which exposes a SOCKS5 proxy on *VM-A* (this local SOCKS5 localhost port will unconditionally forward all traffics to *VM-B*), and then setup a [*privoxy*](https://www.privoxy.org/) on top of previous local SOCKS5 for [domain based forwarding](https://www.privoxy.org/user-manual/config.html#SOCKS). These configurations are complex and prone to errors. Via [*Clash*](https://github.com/Dreamacro/clash), we can combine both client of *Remote Proxy* and domain based forwarding into only one *Local Proxy*. The example configuration file and startup script of *Clash* and given in this repo's [clash.example/](clash.example/) directory.
+Usually firstly we need to setup the client of selected *Remote Proxy* which exposes a SOCKS5 proxy on *VM-Runners* (this local SOCKS5 localhost port will unconditionally forward all traffics to *VM-Proxy*), and then setup a [*privoxy*](https://www.privoxy.org/) on top of previous local SOCKS5 for [domain based forwarding](https://www.privoxy.org/user-manual/config.html#SOCKS). These configurations are complex and prone to errors. Via [*Clash*](https://github.com/Dreamacro/clash), we can combine both client of *Remote Proxy* and domain based forwarding into only one *Local Proxy*. The example configuration file and startup script of *Clash* and given in this repo's [clash.example/](clash.example/) directory.
 
-Assume the *Local Proxy* was launched as `socks5a://localhost:7890`, we can test it via following commands on *VM-A*:
+Assume the *Local Proxy* was launched as `socks5a://localhost:7890`, we can test it via following commands on *VM-Runners*:
 ```bash
-# Without *Local Proxy*, it will print outbound public IP of *VM-A*
+# Without *Local Proxy*, it will print outbound public IP of *VM-Runners*
 curl -s -4 icanhazip.com
 
-# With *Local Proxy*, it will print outbound public IP of *VM-B* !!!
+# With *Local Proxy*, it will print outbound public IP of *VM-Proxy* !!!
 all_proxy=socks5a://localhost:7890 curl -s -4 icanhazip.com
 ```
 
-When *Local Proxy* is ready, we start self-hosted runners' setup on *VM-A*.
+When *Local Proxy* is ready, we start self-hosted runners' setup on *VM-Runners*.
 
-As *VM-A* Can NOT access *GitHub* directly or stably, use *Local Proxy* to clone this repository:
+As *VM-Runners* Can NOT access *GitHub* directly or stably, use *Local Proxy* to clone this repository:
 ```bash
 all_proxy=socks5a://localhost:7890 git clone https://github.com/vbem/multi-runners
 cd multi-runners
@@ -213,7 +213,7 @@ To validate your *PAT* has sufficient permissions for self-hosted runners regist
 ./mr.bash pat2token --org <ORG-NAME>
 ```
 
-To setup two self-hosted runners on *VM-A* for your GitHub organization:
+To setup two self-hosted runners on *VM-Runners* for your GitHub organization:
 ```bash
 ./mr.bash add --org <ORG-NAME> --dotenv 'all_proxy=socks5a://localhost:7890'
 ./mr.bash add --org <ORG-NAME> --dotenv 'all_proxy=socks5a://localhost:7890'
@@ -224,7 +224,7 @@ To check the status of self-hosted runners:
 ./mr.bash list
 ```
 
-To check the *Local Proxy* works well in your runners' process, you can add a simple workflow `.github/workflows/test-local-proxy.yml` in your repository. If `icanhazip.com` was configured as a following-to-remote domain, the workflow run will print outbound public IP of *VM-B*.
+To check the *Local Proxy* works well in your runners' process, you can add a simple workflow `.github/workflows/test-local-proxy.yml` in your repository. If `icanhazip.com` was configured as a following-to-remote domain, the workflow run will print outbound public IP of *VM-Proxy*, even though this workflow actually runs on *VM-Proxy*.
 ```yaml
 ---
 name: Test Local Proxy works in my self-hosted runners

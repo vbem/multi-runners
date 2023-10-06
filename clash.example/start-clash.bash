@@ -10,17 +10,19 @@
 declare -rg clash_image='dreamacro/clash:v1.18.0'
 
 # https://dreamacro.github.io/clash/configuration/configuration-reference.html
-declare -rg clash_config_path="$(dirname "$0")/config.yaml"
+clash_config_path="$(dirname "$0")/config.yaml"
 [[ -r "$clash_config_path" ]] || {
     echo "Clash config file '$clash_config_path' not exists!"
     exit 1
 }
+declare -rg clash_config_path
 
 # https://dreamacro.github.io/clash/zh_CN/configuration/inbound.html
-declare -rg clash_mixed_port="$(grep -oP '^mixed-port: *\K\d+.*' config.yaml)" || {
+clash_mixed_port="$(grep -oP '^mixed-port: *\K\d+.*' config.yaml)" || {
     echo "'mixed-port' not found in '$clash_config_path'"
     exit 1
 }
+declare -rg clash_mixed_port
 
 # https://docs.docker.com/network/#published-ports
 declare -rg clash_mixed_port_publish_ip='127.0.0.1'
