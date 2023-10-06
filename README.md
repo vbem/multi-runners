@@ -189,7 +189,7 @@ all_proxy=socks5a://localhost:7890 curl -s -4 icanhazip.com
 
 When *Local Proxy* is ready, we start self-hosted runners' setup on *VM-A*.
 
-As *VM-A* Can NOT access *GitHub* directly or stably, use *Local Proxy* to clone this repo:
+As *VM-A* Can NOT access *GitHub* directly or stably, use *Local Proxy* to clone this repository:
 ```bash
 all_proxy=socks5a://localhost:7890 git clone https://github.com/vbem/multi-runners
 cd multi-runners
@@ -224,7 +224,7 @@ To check the status of self-hosted runners:
 ./mr.bash list
 ```
 
-To check the *Local Proxy* works well in your runners' process, you can add a simple workflow `.github/workflows/test-local-proxy.yml` in your repo. If `icanhazip.com` was configured as a following-to-remote domain, the workflow run will print outbound public IP of *VM-B*.
+To check the *Local Proxy* works well in your runners' process, you can add a simple workflow `.github/workflows/test-local-proxy.yml` in your repository. If `icanhazip.com` was configured as a following-to-remote domain, the workflow run will print outbound public IP of *VM-B*.
 ```yaml
 ---
 name: Test Local Proxy works in my self-hosted runners
