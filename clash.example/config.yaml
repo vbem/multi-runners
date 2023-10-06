@@ -1,0 +1,32 @@
+# https://dreamacro.github.io/clash/configuration/configuration-reference.html
+
+# reference `clash` container as socks5h://localhost:${mixed-port} on docker host
+# https://curl.se/libcurl/c/CURLOPT_PROXY.html
+mixed-port: 7890
+allow-lan: true
+
+# for example, setup a `ss-server` proxy on remote
+# https://dreamacro.github.io/clash/configuration/outbound.html#proxies
+proxies:
+  - name: proxy
+    type: ss # https://github.com/shadowsocks
+    cipher: chacha20-ietf-poly1305 # 👈 TODO: paste your `ss-server` cipher
+    server: ss.example.com # 👈 TODO: paste your `ss-server` address
+    port: 12345 # 👈 TODO: paste your `ss-server` port
+    password: 'Berlin Wall has long been down' # 👈 TODO: paste your `ss-server` password
+
+# only route GitHub and specific traffics to remote proxy
+mode: rule
+rules:
+  # https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#communication-requirements
+  - DOMAIN-SUFFIX,github.com,proxy
+  - DOMAIN-SUFFIX,githubusercontent.com,proxy
+  - DOMAIN-SUFFIX,githubapp.com,proxy
+  - DOMAIN-SUFFIX,ghcr.io,proxy
+
+  # custom traffics
+  - DOMAIN-SUFFIX,google.com,proxy
+  - DOMAIN-SUFFIX,icanhazip.com,proxy
+
+  # defaults to direct
+  - MATCH,DIRECT

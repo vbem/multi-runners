@@ -14,10 +14,10 @@ declare -rg DIR_THIS FILE_THIS
 # only for local debug if .env file exists
 [[ -f "$DIR_THIS/.env" ]] && source "$DIR_THIS/.env"
 
-# enviroment variables for customization
+# environment variables for customization
 # Github personal access token
 declare -rg MR_GITHUB_PAT
-# download url of actions runner release, defaults to latest release on GitHub.com
+# download URL of actions runner release, defaults to latest release on GitHub.com
 declare -rg MR_RELEASE_URL
 # baseurl of GitHub API, defaults to https://api.github.com
 declare -rg MR_GIHUB_API_BASEURL="${MR_GIHUB_API_BASEURL:-https://api.github.com}"
@@ -34,7 +34,7 @@ declare -rg MR_URL='https://github.com/vbem/multi-runners'
 # Log to stderr
 #   $1: level string
 #   $2: message string
-#   stderr: loggin message
+#   stderr: logging message
 #   $?: always 0
 function log::stderr {
     local each pos level datetime

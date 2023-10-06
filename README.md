@@ -1,16 +1,16 @@
 # multi-runners
 [![Static Badge](https://img.shields.io/badge/self--hosted%20runners-teal?logo=GitHub&label=GitHub%20Actions)](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners)
-[![Linter](https://github.com/vbem/rctl/actions/workflows/linter.yml/badge.svg)](https://github.com/vbem/rctl/actions/workflows/linter.yml)
+[![Linter](https://github.com/vbem/multi-runners/actions/workflows/linter.yml/badge.svg)](https://github.com/vbem/multi-runners/actions/workflows/linter.yml)
 
 **Multi self-hosted GitHub action runners on single host!**
 
-## Intorduction
-This application is designed for controlling multi [self-hosted GitHub Action runners](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners) on single host, when [Actions Runner Controller (ARC)](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller/quickstart-for-actions-runner-controller) is not feasible in your engineering environment. This applciation has following advantages:
+## Introduction
+This application is designed for controlling multi [self-hosted GitHub Action runners](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners) on single host, when [Actions Runner Controller (ARC)](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller/quickstart-for-actions-runner-controller) is not feasible in your engineering environment. This application has following advantages:
 - Only Linux based hosts required.
 - Simple as more as possible.
-- Lightweight wapper of offcial self-hosted runner.
-- Both *github.com* and *GitHub Enterprise* are suppport.
-- Both *organizatuon* and *repository* level runners are supported.
+- Lightweight wrapper of official self-hosted runner.
+- Both *github.com* and *GitHub Enterprise* are support.
+- Both *organization* and *repository* level runners are supported.
 
 ## Usage
 ```text
@@ -46,7 +46,7 @@ Options:
 ```
 
 ### Download this application
-This applciation reuqires to be run under a Linux user with non-password sudo permission (`%runners ALL=(ALL) NOPASSWD:ALL`), such as `ec2-user` and etc. It's also fine to run this application as `root`:
+This application requires to be run under a Linux user with non-password sudo permission (`%runners ALL=(ALL) NOPASSWD:ALL`), such as `ec2-user` and etc. It's also fine to run this application as `root`:
 
 ```bash
 git clone https://github.com/vbem/multi-runners.git
@@ -55,19 +55,19 @@ cd multi-runners
 ```
 
 ### Setup PAT
-This application requires a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with smallest permissions and shorest expiration time. Only `add`/`del`/`pat2token` sub-commands need this PAT. You can remove it on *GitHub* after multi-runners' setup.
+This application requires a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) with smallest permissions and shortest expiration time. Only `add`/`del`/`pat2token` sub-commands need this PAT. You can remove it on *GitHub* after multi-runners' setup.
 
-PAT types | Repository level runners | Organization levle runners
+PAT types | Repository level runners | Organization level runners
 --- | --- | ---
 *Fine-grained PAT* (recommended) | assign the `administration` permission | assign the `organization_self_hosted_runners` permission
 *Classic PAT* | assign the `repo` scope | assign the `manage_runners:org` scope
 
-During runtime, you can set your *PAT* in environment varible `RCTL_GITHUB_PAT`. **To simplify subsequent execution, you can define any environment variable in `.env` file**. For example,
+During runtime, you can set your *PAT* in environment variable `MR_GITHUB_PAT`. **To simplify subsequent execution, you can define any environment variable in `.env` file**. For example,
 
 ```bash
 # .env file under the directory of this application
-RCTL_GITHUB_PAT='github_pat_***********'
-ENV_VAR_2=blablabla
+MR_GITHUB_PAT='github_pat_***********'
+ALL_PROXY=socks5://localhost
 ```
 
 You can run following command to check whether or not your PAT can generate [GitHub Actions runners' registration-token](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/autoscaling-with-self-hosted-runners#authentication-requirements):
@@ -76,7 +76,7 @@ You can run following command to check whether or not your PAT can generate [Git
 ```
 
 ### Download the latest version of GitHub Actions package
-If environment variable `MR_RELEASE_URL` is empty, this applciation will download the [latest version of GitHub Actions runners tar package](https://github.com/actions/runner/releases) to local directory `/tmp/` during runtime.
+If environment variable `MR_RELEASE_URL` is empty, this application will download the [latest version of GitHub Actions runners tar package](https://github.com/actions/runner/releases) to local directory `/tmp/` during runtime.
 
 ```bash
 ./mr.bash download
@@ -85,10 +85,10 @@ If environment variable `MR_RELEASE_URL` is empty, this applciation will downloa
 If limited by slow download speed, you can also manually download it to `/tmp/`, and set the `MR_RELEASE_URL` env as `/tmp/actions-runner-linux-x64-2.345.6.tar.gz`.
 
 ### GitHub Enterprise Server editions
-*GitHub Enterprise Server* editions usally have differnt server and API URL prefies then *github.com*, you can set them in environment variables `MR_GIHUB_BASEURL` and `MR_GIHUB_API_BASEURL`.
+*GitHub Enterprise Server* editions usually have different server and API URL prefixes comparing with *github.com*, you can set them in environment variables `MR_GIHUB_BASEURL` and `MR_GIHUB_API_BASEURL`.
 
 ### Setup multi-runners on single host
-To setup multi-runners, you can simplify run following command mult times:
+To setup multi-runners, you can simplify run following command multi times:
 ```bash
 # 1 runner for repository `<ORG-NAME-1>/<REPO-NAME-1>`
 ./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-1>
@@ -104,11 +104,11 @@ To setup multi-runners, you can simplify run following command mult times:
 ```
 
 ### List all runners on current host
-This application also wrappered status check of runners.
+This application also integrated status check of runners.
 ```bash
 ./mr.bash list
 ```
-Which outpus,
+Which outputs,
 ```bash
 runner-0 537M running https://github.com/<ORG-NAME-1>/<REPO-NAME-1>
 runner-1 537M running https://github.com/<ORG-NAME-1>/<REPO-NAME-2>
@@ -147,18 +147,94 @@ PATH=$PATH:/mybin
 
 ## Case Study - Deploy multi runners on single host which can not access GitHub directly
 
-Because GitHub-hosted runners can NOT access resources in a private network, we need to deploy 3 self-hosted runners for an GitHub organization on a single host *VM-A*, which:
-- Can access resources in enterprise private network
-- Can NOT [access *GitHub* directly](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#communication-requirements) for some reasons
+A multi-national corporation adopted GitHub as its centralized engineering efficiency platform. But in a country branch, according to  some network blockade/bandwidth/QoS reasons, neither GitHub-hosted runners can access endpoints in this country stably, nor virtual machines in this country can access GitHub liberally.
 
-First we need to prepare another host *VM-B*, which:
-- Can access *GitHub* directly
-- Can be accessed by *VM-A* directly
+In such a bad situation, we still need to setup reliable self-hosted runners in this country. What should we do? 🤣
 
-That is, *VM-A* will use *VM-B* as a proxy to access *GitHub*, but access other enterprise private network access locally:
+A cost-conscious solution can be described as following architecture:
 ```plain
-Private resources <---- VM-A ----> Firewall ----> VM-B ----> GitHub
- \                       /                         |
-  -----------------------                        Proxy
-      Private network
+Endpoints <-------- VM-A ----> Firewall ----> VM-B ----> GitHub
+ \                   /                         |  \
+  -------------------                          |   ----> Other endpoints
+ Branch office network                    Remote Proxy
+```
+A host *VM-A* is required for self-hosted runners, which is placed in this country and:
+- Can access endpoints of this country branch
+- Can NOT access *GitHub* directly or stably
+
+A tiny specification host *VM-B* is required as *Remote Proxy*, which is deployed in a place that:
+- Can access *GitHub* directly and stably
+- Can be accessed by *VM-A* directly and stably
+
+Meanwhile, outbound traffics from *VM-A* MUST be routed by predefined rules:
+- [Requests to *GitHub* endpoints](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#communication-requirements) and non-local endpoints should be forward to the *Remote Proxy* on *VM-B*
+- Requests to local endpoints should be handled directly
+
+Let's implement this solution. 🧐
+
+On *VM-B*, we can setup a *Remote Proxy* that's not easy to be blocked by the firewall, such as [*SS*](https://github.com/shadowsocks), [*TJ*](https://github.com/trojan-gfw), [*XR*](https://github.com/XTLS), etc. These particular proxies have their own deployment and configuration methods. Please read their documents for more information. It's advised to set the outbound IP of *VM-A* as the only whitelist of the *Remote Proxy* port on *VM-B* to avoid active detection from the firewall.
+
+Before setup runners on *VM-A*, we need a [*Local Proxy*](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/using-a-proxy-server-with-self-hosted-runners) on *VM-A*.
+
+Usually firstly we need to setup the client of selected *Remote Proxy* which exposes a SOCKS5 port on localhost (this local SOCKS5 will unconditionally forward all traffics to *VM-B*), and then setup a [*privoxy*](https://www.privoxy.org/) on top of previous local SOCKS5 for [domain based forwarding](https://www.privoxy.org/user-manual/config.html#SOCKS). These configurations are complex and prone to errors. Via [*Clash*](https://github.com/Dreamacro/clash), we can combine both client of *Remote Proxy* and domain based forwarding into only one *Local Proxy*. The example configuration file and startup script of *Clash* and given in this repo's [clash.example/](clash.example/) directory.
+
+Assume the *Local Proxy* was launched as `socks5a://localhost:7890`, we can test it via following commands on *VM-A*:
+```bash
+# Without *Local Proxy*, it will print outbound public IP of *VM-A*
+curl -s -4 icanhazip.com
+
+# With *Local Proxy*, it will print outbound public IP of *VM-B* !!!
+all_proxy=socks5a://localhost:7890 curl -s -4 icanhazip.com
+```
+
+When *Local Proxy* is ready, we start self-hosted runners' setup on *VM-A*.
+
+As *VM-A* Can NOT access *GitHub* directly or stably, use *Local Proxy* to clone this repo:
+```bash
+all_proxy=socks5a://localhost:7890 git clone https://github.com/vbem/multi-runners
+cd multi-runners
+```
+
+As self-hosted runners' tar package downloading and registration-token fetching also requires communication with GitHub, we also configure *Local Proxy* for this application:
+```bash
+cat > .env <<- __
+    MR_GITHUB_PAT='<paste-for-GitHub-PAT-here>'
+    all_proxy='socks5h://localhost:7890'
+__
+```
+
+To download the self-hosted runners' tar package from *GitHub*:
+```bash
+./mr.bash download
+```
+
+To validate your *PAT* has sufficient permissions for self-hosted runners registration on your GitHub organization `https://github.com/<ORG-NAME>`:
+```bash
+./mr.bash pat2token --org <ORG-NAME>
+```
+
+To setup two self-hosted runners on *VM-A* for your GitHub organization:
+```bash
+./mr.bash add --org <ORG-NAME> --dotenv 'all_proxy=socks5a://localhost:7890'
+./mr.bash add --org <ORG-NAME> --dotenv 'all_proxy=socks5a://localhost:7890'
+```
+
+To check the status of self-hosted runners:
+```bash
+./mr.bash list
+```
+
+To check the *Local Proxy* works well in your runners' process, you can add a simple workflow `.github/workflows/test-local-proxy.yml` in your repo. If `icanhazip.com` was configured as a following-to-remote domain, the workflow run will print outbound public IP of *VM-B*.
+```yaml
+---
+name: Test Local Proxy works in my self-hosted runners
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ['self-hosted', '${{ github.repository }}']
+    steps:
+      - run: |
+          curl -s -4 icanhazip.com
+...
 ```
