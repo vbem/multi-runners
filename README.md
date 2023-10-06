@@ -2,7 +2,7 @@
 [![Static Badge](https://img.shields.io/badge/self--hosted%20runners-teal?logo=GitHub&label=GitHub%20Actions)](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners)
 [![Linter](https://github.com/vbem/rctl/actions/workflows/linter.yml/badge.svg)](https://github.com/vbem/rctl/actions/workflows/linter.yml)
 
-**Multi self-hosted GitHub action runners on same host!**
+**Multi self-hosted GitHub action runners on single host!**
 
 ## Intorduction
 This application is designed for controlling multi [self-hosted GitHub Action runners](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners) on single host, when [Actions Runner Controller (ARC)](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller/quickstart-for-actions-runner-controller) is not feasible in your engineering environment. This applciation has following advantages:
@@ -143,4 +143,22 @@ Then the following lines will be added to `.env` file located in self-hosted run
 ```plain
 TZ=Asia/Shanghai
 PATH=$PATH:/mybin
+```
+
+## Case Study - Deploy multi runners on single host which can not access GitHub directly
+
+Because GitHub-hosted runners can NOT access resources in enterprise private network, we need to deploy 3 self-hosted runners for an GitHub organization on a single host *VM-A* in enterprise private network, which:
+- Can access resources in enterprise private network
+- Can NOT [access *GitHub* directly](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners#communication-requirements) for some reasons
+
+First we need to prepare another host *VM-B*, which:
+- Can access *GitHub* directly
+- Can be accessed by *VM-A* directly
+
+That is, *VM-A* will use *VM-B* as a proxy to access *GitHub*, but access other enterprise private network access locally:
+```plain
+Private resources <---- VM-A ----> Firewall ----> VM-B ----> GitHub
+\                          /                        |
+ --------------------------                       Proxy
+         Big LAN
 ```
