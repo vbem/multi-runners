@@ -67,7 +67,7 @@ During runtime, you can set your *PAT* in environment variable `MR_GITHUB_PAT`. 
 ```bash
 # .env file under the directory of this application
 MR_GITHUB_PAT='github_pat_***********'
-ALL_PROXY=socks5://localhost
+ALL_PROXY=socks5h://localhost
 ```
 
 You can run following command to check whether or not your PAT can generate [GitHub Actions runners' registration-token](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/autoscaling-with-self-hosted-runners#authentication-requirements):
@@ -178,20 +178,20 @@ Before setup runners on *VM-Runners*, we need a [***Local Proxy***](https://docs
 
 Usually firstly we need to setup the client of selected *Remote Proxy* which exposes a SOCKS5 proxy on *VM-Runners* (this local SOCKS5 localhost port will unconditionally forward all traffics to *VM-Proxy*), and then setup a [*privoxy*](https://www.privoxy.org/) on top of previous local SOCKS5 for [domain based forwarding](https://www.privoxy.org/user-manual/config.html#SOCKS). These configurations are complex and prone to errors. Via [*Clash*](https://github.com/Dreamacro/clash), we can combine both client of *Remote Proxy* and domain based forwarding into only one *Local Proxy*. The example configuration file and startup script of *Clash* and given in this repo's [clash.example/](clash.example/) directory.
 
-Assume the *Local Proxy* was launched as `socks5a://localhost:7890`, we can test it via following commands on *VM-Runners*:
+Assume the *Local Proxy* was launched as `socks5h://localhost:7890`, we can test it via following commands on *VM-Runners*:
 ```bash
 # Without *Local Proxy*, it will print outbound public IP of *VM-Runners*
 curl -s -4 icanhazip.com
 
 # With *Local Proxy*, it will print outbound public IP of *VM-Proxy* !!!
-all_proxy=socks5a://localhost:7890 curl -s -4 icanhazip.com
+all_proxy=socks5h://localhost:7890 curl -s -4 icanhazip.com
 ```
 
 When *Local Proxy* is ready, we start self-hosted runners' setup on *VM-Runners*.
 
 As *VM-Runners* Can NOT access *GitHub* directly or stably, use *Local Proxy* to clone this repository:
 ```bash
-all_proxy=socks5a://localhost:7890 git clone https://github.com/vbem/multi-runners
+all_proxy=socks5h://localhost:7890 git clone https://github.com/vbem/multi-runners
 cd multi-runners
 ```
 
@@ -215,8 +215,8 @@ To validate your *PAT* has sufficient permissions for self-hosted runners regist
 
 To setup two self-hosted runners on *VM-Runners* for your GitHub organization:
 ```bash
-./mr.bash add --org <ORG-NAME> --dotenv 'all_proxy=socks5a://localhost:7890'
-./mr.bash add --org <ORG-NAME> --dotenv 'all_proxy=socks5a://localhost:7890'
+./mr.bash add --org <ORG-NAME> --dotenv 'all_proxy=socks5h://localhost:7890'
+./mr.bash add --org <ORG-NAME> --dotenv 'all_proxy=socks5h://localhost:7890'
 ```
 
 To check the status of self-hosted runners:
