@@ -40,6 +40,7 @@ Options:
   --repo    GitHub repository name, registration on organization-level if empty
   --user    Linux local username of runner
   --labels  Extra labels for the runner
+  --group   Runner group for the runner
   --token   Runner registration token, takes precedence over MR_GITHUB_PAT
   --dotenv  The lines to set in runner's '.env' files
   -h --help Show this help.
