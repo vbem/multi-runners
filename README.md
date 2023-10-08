@@ -1,5 +1,5 @@
 # multi-runners
-[![Static Badge](https://img.shields.io/badge/self--hosted%20runners-teal?logo=GitHub&label=GitHub%20Actions)](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners)
+[![awesome-runners](https://img.shields.io/badge/listed%20on-awesome--runners-blue.svg)](https://github.com/jonico/awesome-runners)
 [![Linter](https://github.com/vbem/multi-runners/actions/workflows/linter.yml/badge.svg)](https://github.com/vbem/multi-runners/actions/workflows/linter.yml)
 
 🌈🌈🌈 **Multi self-hosted GitHub action runners on single host!** 🌈🌈🌈
@@ -129,10 +129,10 @@ You can delete an existing runner by its local Linux username.
 In [`jobs.<job_id>.runs-on`](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idruns-on), target runners can be based on the labels as follows via [GitHub context](https://docs.github.com/en/actions/learn-github-actions/contexts#github-context):
 ```yaml
 # For organization level self-hosted runners
-runs-on: ['self-hosted', '${{ github.repository_owner }}']
+runs-on: [self-hosted, '${{ github.repository_owner }}']
 
 # For repository level self-hosted runners
-runs-on: ['self-hosted', '${{ github.repository }}']
+runs-on: [self-hosted, '${{ github.repository }}']
 ```
 
 ### Set environment variables into runners process
@@ -233,7 +233,7 @@ on:
   workflow_dispatch:
 jobs:
   test:
-    runs-on: ['self-hosted', '${{ github.repository }}']
+    runs-on: [self-hosted, '${{ github.repository }}']
     steps:
       - run: |
           curl -s -4 icanhazip.com

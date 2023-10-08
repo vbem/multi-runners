@@ -18,7 +18,7 @@ clash_config_path="$(dirname "$0")/config.yaml"
 declare -rg clash_config_path
 
 # https://dreamacro.github.io/clash/zh_CN/configuration/inbound.html
-clash_mixed_port="$(grep -oP '^mixed-port: *\K\d+.*' config.yaml)" || {
+clash_mixed_port="$(grep -oP '^mixed-port: *\K\d+.*' "$clash_config_path")" || {
     echo "'mixed-port' not found in '$clash_config_path'"
     exit 1
 }

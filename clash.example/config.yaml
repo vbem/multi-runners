@@ -1,3 +1,4 @@
+---
 # https://dreamacro.github.io/clash/configuration/configuration-reference.html
 
 # reference `clash` container as socks5h://localhost:${mixed-port} on docker host
@@ -30,3 +31,4 @@ rules:
 
   # defaults to direct
   - MATCH,DIRECT
+...

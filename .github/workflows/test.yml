@@ -10,7 +10,7 @@ on:
 
 jobs:
   test:
-    runs-on: ['self-hosted', '${{ github.repository }}']
+    runs-on: [self-hosted, '${{ github.repository }}']
 
     steps:
       - run: |
