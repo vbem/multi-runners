@@ -340,7 +340,7 @@ function mr::main {
             --labels) labels="$2"; shift 2 ;;
             --token) token="$2"; shift 2 ;;
             --group) group="$2"; shift 2 ;;
-            --dotenv) dotenv="$dotenv$2"$'\n'; shift 2 ;;
+            --dotenv) dotenv+="$2"$'\n'; shift 2 ;;
             --) shift ; break ;;
             *) log::stderr ERROR "Invalid option '$1'! See '$FILE_THIS help'."; return 255;;
         esac
