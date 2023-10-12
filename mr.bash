@@ -227,7 +227,8 @@ function mr::addRunner {
     [[ -n "$repo" ]] && url="$MR_GIHUB_BASEURL/$org/$repo" || url="$MR_GIHUB_BASEURL/$org"
 
     log::stderr DEBUG "Adding runner into local user '$user' for $url"
-    run::logIfFailed sudo -Hiu "$user" -- bash -eo pipefail <<- __
+    # `sudo -Hiu "$user"` only adopt $PATH defined in /etc/sudoers
+    run::logIfFailed sudo su --login "$user" -- -eo pipefail <<- __
         mkdir -p runner/mr.d && cd runner/mr.d
         echo -n '$org' > org && echo -n '$repo' > repo && echo -n '$url' > url
         echo -n '$name' > name && echo -n '$labels' > labels && echo -n '$tarpath' > tarpath
@@ -255,7 +256,7 @@ function mr::delRunner {
     fi
 
     log::stderr DEBUG "Deleting runner local user '$user'"
-    run::logIfFailed sudo -Hiu "$user" -- bash <<- __
+    run::logIfFailed sudo su --login "$user" -- <<- __
         cd runner
         sudo ./svc.sh stop && sudo ./svc.sh uninstall
         ./config.sh remove --token '$token'
