@@ -2,6 +2,7 @@
 [![awesome-runners](https://img.shields.io/badge/listed%20on-awesome--runners-blue.svg)](https://github.com/jonico/awesome-runners)
 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/vbem/multi-runners?label=Release&logo=github)](https://github.com/vbem/multi-runners/releases)
 [![Linter](https://github.com/vbem/multi-runners/actions/workflows/linter.yml/badge.svg)](https://github.com/vbem/multi-runners/actions/workflows/linter.yml)
+![GitHub closed issues](https://img.shields.io/github/issues-closed/vbem/multi-runners?logo=github)
 
 🌈🌈🌈 **Multi self-hosted GitHub action runners on single host!** 🌈🌈🌈
 
