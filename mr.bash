@@ -208,7 +208,7 @@ function mr::downloadRunner {
 
     tarpath="/tmp/$(run::logFailed basename "$url")" || return $?
     if [[ ! -r "$tarpath" ]]; then
-        log::_ INFO "Downloading release $url to $tarpath"
+        log::_ INFO "Downloading from $url to $tarpath"
         run::logFailed curl -Lm 600 --retry 1 "$url" -o "$tarpath.tmp" \
         && run::logFailed mv -f "$tarpath.tmp" "$tarpath" \
         && run::logFailed chmod a+r "$tarpath" || return $?
@@ -281,10 +281,11 @@ __
     run::log sudo userdel -rf "$user" || return $?
 }
 
-# List all runners
+# List all existing runners
 #   $?: 0 if successful and non-zero otherwise
 #   stdout: all runners
 function mr::listRunners {
+    log::_ INFO "Listing localhost all existing runners"
     run::exists jq || return $?
     local users=''
     users="$(run::logFailed getent group 'runners' | cut -d: -f4 | tr ',' '\n')" || return $?
