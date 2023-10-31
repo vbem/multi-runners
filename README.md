@@ -26,16 +26,16 @@ Environment variables:
 
 Sub-commands:
   add       Add one self-hosted runner on this host
-            e.g. mr.bash add --org ORG --repo REPO --labels cloud:ali,region:cn-shanghai
+            e.g. ./mr.bash add --org ORG --repo REPO --labels cloud:ali,region:cn-shanghai
   del       Delete one self-hosted runner on this host
-            e.g. mr.bash del --user runner-1
+            e.g. ./mr.bash del --user runner-1
   list      List all runners on this host
-            e.g. mr.bash list
+            e.g. ./mr.bash list
   download  Download GitHub Actions Runner release tar to /tmp/
             Detect latest on github.com/actions/runner/releases if MR_RELEASE_URL empty
-            e.g. mr.bash download
+            e.g. ./mr.bash download
   pat2token Get runner registration token from GitHub PAT (MR_GITHUB_PAT)
-            e.g. mr.bash pat2token --org SOME_OWNER --repo SOME_REPO
+            e.g. ./mr.bash pat2token --org SOME_OWNER --repo SOME_REPO
 
 Options:
   --org     GitHub organization name

@@ -32,91 +32,109 @@ declare -rg MR_URL='https://github.com/vbem/multi-runners'
 # stdlib
 
 # Log to stderr
+# https://misc.flogisoft.com/bash/tip_colors_and_formatting
 #   $1: level string
 #   $2: message string
-#   stderr: logging message
 #   $?: always 0
-function log::stderr {
-    local each pos level datetime
+#   stderr: log message
+function log::_ {
+    local each pos color level datetime
     for each in "${FUNCNAME[@]}"; do \
-        [[ "$each" != log::stderr ]] && \
-        [[ "$each" != log::ifFailed ]] && \
-        [[ "$each" != run::logDebug ]] && \
-        [[ "$each" != run::logIfFailed ]] && \
+        [[ "$each" != log::_ ]] && \
+        [[ "$each" != log::failed ]] && \
+        [[ "$each" != run::logFailed ]] && \
+        [[ "$each" != run::log ]] && \
         [[ "$each" != main ]] && \
         [[ "$each" != *::main ]] && \
         [[ "$each" != *::_* ]] && \
         pos="/$each$pos"
     done
     case "$1" in
-        FATAL|ERR*)     level="\e[1;91m$1\e[0m" ;;
-        WARN*)          level="\e[1;95m$1\e[0m" ;;
-        INFO*|NOTICE)   level="\e[1;92m$1\e[0m" ;;
-        DEBUG)          level="\e[1;96m$1\e[0m" ;;
-        *)              level="\e[1;94m$1\e[0m" ;;
+        FATAL)          color="5;1;91" ;;
+        ERR*)           color="1;91" ;;
+        WARN*)          color="95" ;;
+        INFO*|NOTICE)   color="92" ;;
+        DEBUG)          color="94" ;;
+        *)              color="96" ;;
     esac
-    datetime="\e[2;90m$(date -Isecond)\e[0m"
-    echo -e "\e[2;97m[\e[0m$datetime $level \e[90m${pos:1}\e[0m\e[2;97m]\e[0m \e[93m$2\e[0m" >&2
-    #echo "[$(date -Isecond) $1 ${pos:1}] $2" >&2
+    datetime="\e[3;2;90m$(date -Isecond)\e[0m"
+    pos="\e[3;90m${pos:1}\e[0m"
+    level="\e[1;3;${color}m$1\e[0m"
+    echo -e "\e[2;97m[\e[0m$datetime ${pos} $level\e[2;97m]\e[0m \e[${color}m$2\e[0m" >&2
 }
 
 # Log if previous return code is none-zero
 #   $1: previous return code
 #   $2: message string
-#   stderr: message string
 #   $?: previous return code
-function log::ifFailed {
-    (( "$1" != 0 )) && log::stderr ERROR "$2"
-    return "$1"
-}
-
-# Run command and log
-#   $@: command line
-#   stdout: stdout of command
 #   stderr: message string
-#   $?: return code of command
-function run::logDebug {
-    local level
-    local -i ret
-    log::stderr DEBUG "Running command: $*"
-    "$@"
-    ret=$?; (( ret == 0 )) && level='DEBUG' || level='WARN'
-    log::stderr "$level" "Return $ret from command: $*"
-    return $ret
+function log::failed {
+    (( "$1" != 0 )) && log::_ ERROR "$2"
+    return "$1"
 }
 
 # Run command and log if return code is none-zero
 #   $@: command line
+#   $?: return code of command
 #   stdout: stdout of command
 #   stderr: message string
-#   $?: return code of command
-function run::logIfFailed {
+function run::logFailed {
     local -i ret
     "$@"
-    ret=$?; (( ret != 0 )) && log::stderr WARN "Return $ret from command: $*"
-    return $ret
+    ret=$?
+    log::failed "$ret" "Return $ret from command: $*"
+}
+
+# Run command with log and log if return code is none-zero
+#   $@: command line
+#   $?: return code of command
+#   stdout: stdout of command
+#   stderr: message string
+function run::log {
+    log::_ DEBUG "Running: $*"
+    run::logFailed "$@"
+}
+
+# Test commands exists
+#   $@: commands
+#   $?: 0 if successful and none-zero otherwise
+#   stderr: message string
+function run::exists {
+    local each=''
+    for each in "$@"; do
+        command -v "$each" &> /dev/null
+        log::failed $? "Not found command '$each'!" || return $?
+    done
 }
 
 # Check if varible values of given varible names are not empty
 #   $@: varible names
 #   $?: 0 if non-empty and non-zero otherwise
-function str::isVarNotEmpty {
-    local eachVarName=''
-    for eachVarName in "$@"; do
-        [[ -n "${!eachVarName}" ]]
-        log::ifFailed $? "Var '$eachVarName' is empty!" || return $?
+function str::varNotEmpty {
+    local each=''
+    for each in "$@"; do
+        [[ -n "${!each}" ]]
+        log::failed $? "Var '$each' is empty!" || return $?
     done
+}
+
+# Check if varible value of given varible name is IN subsequent arguments
+#   $1: varible name
+#   $N: arguments as candidate set
+#   $?: 0 if it's in and non-zero otherwise
+function str::varIn {
+    local varName="$1" varVal="${!1}" each=''
+    shift
+    str::varNotEmpty varName || return $?
+    for each in "$@"; do
+        [[ "$each" == "$varVal" ]] && return
+    done
+    log::_ ERROR "Invalid value '$varVal' for varible '$varName'!"
+    return 1
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # functions
-
-# Check dependency of this application
-#   $?: 0 if successful and non-zero otherwise
-function mr::pretest {
-    command -v jq > /dev/null || log::ifFailed 'Please intsall `jq`!' || return $?
-    str::isVarNotEmpty MR_GIHUB_API_BASEURL MR_GIHUB_BASEURL || return $?
-}
 
 # Add a local user for runner
 #   $1: username, defaults to self-increasing username
@@ -131,10 +149,10 @@ function mr::addUser {
             id -u "$user" &> /dev/null || break
         done
     fi
-    run::logIfFailed sudo tee /etc/sudoers.d/runners <<< '%runners ALL=(ALL) NOPASSWD:ALL' > /dev/null \
-    && run::logIfFailed sudo groupadd -f 'runners' >&2 \
-    && run::logIfFailed sudo groupadd -f 'docker' >&2 \
-    && run::logIfFailed sudo useradd -m -s /bin/bash -G 'runners,docker' "$user" >&2 || return $?
+    run::logFailed sudo tee /etc/sudoers.d/runners <<< '%runners ALL=(ALL) NOPASSWD:ALL' > /dev/null \
+    && run::logFailed sudo groupadd -f 'runners' >&2 \
+    && run::logFailed sudo groupadd -f 'docker' >&2 \
+    && run::log sudo useradd -m -s /bin/bash -G 'runners,docker' "$user" >&2 || return $?
     echo "$user"
 }
 
@@ -142,7 +160,7 @@ function mr::addUser {
 #   stdout: number, defaults to 2
 function mr::nproc {
     local -i num=0;
-    num="$(run::logIfFailed nproc)"
+    num="$(run::logFailed nproc)"
     (( num > 0 )) && echo "$num" || echo 2
 }
 
@@ -153,22 +171,22 @@ function mr::nproc {
 #   $1: organization
 #   $2: repository, registration on organization if empty
 function mr::pat2token {
+    run::exists jq || return $?
     local org="$1" repo="$2" api='' middle='' res=''
-    str::isVarNotEmpty MR_GITHUB_PAT org || return $?
-    mr::pretest || return $?
+    str::varNotEmpty MR_GITHUB_PAT org || return $?
 
     [[ -z "$repo" ]] && middle="orgs/$org" || middle="repos/$org/$repo"
     api="$MR_GIHUB_API_BASEURL/$middle/actions/runners/registration-token"
 
-    log::stderr DEBUG "Calling API: $api"
+    log::_ DEBUG "Calling API: $api"
     res="$(curl -Lsm 3 --retry 1 \
         -X POST \
         -H "Accept: application/vnd.github+json" \
         -H "Authorization: Bearer ${MR_GITHUB_PAT}" \
         -H "X-GitHub-Api-Version: 2022-11-28" \
-        "$api" )" || log::ifFailed $? "Call API failed: $api" || return $?
+        "$api" )" || log::failed $? "Call API failed: $api" || return $?
 
-    jq -Mcre .token <<< "$res" || log::ifFailed $? "Parse registration-token failed! response: $res" || return $?
+    jq -Mcre .token <<< "$res" || log::failed $? "Parse registration-token failed! response: $res" || return $?
 }
 
 # Download and cache GitHub Actions Runner to local /tmp/
@@ -181,20 +199,20 @@ function mr::downloadRunner {
     local url="$MR_RELEASE_URL" tarpath=''
 
     if [[ -z "$url" ]]; then
-        mr::pretest || return $?
+        run::exists jq || return $?
         url="$(
-            run::logIfFailed curl -Lsm 3 --retry 1 https://api.github.com/repos/actions/runner/releases/latest \
+            run::logFailed curl -Lsm 3 --retry 1 https://api.github.com/repos/actions/runner/releases/latest \
             | jq -Mcre '.assets[].browser_download_url|select(test("linux-x64-[^-]+\\.tar\\.gz"))'
         )" || return $?
     fi
 
-    tarpath="/tmp/$(run::logIfFailed basename "$url")" || return $?
+    tarpath="/tmp/$(run::logFailed basename "$url")" || return $?
     if [[ ! -r "$tarpath" ]]; then
-        log::stderr DEBUG "Downloading release $url"
-        run::logIfFailed curl -Lm 600 --retry 1 "$url" -o "$tarpath.tmp" \
-        && run::logIfFailed mv -f "$tarpath.tmp" "$tarpath" \
-        && run::logIfFailed chmod a+r "$tarpath" \
-        && run::logIfFailed tar -Oxzf "$tarpath" './bin/installdependencies.sh' | sudo bash >&2 \
+        log::_ INFO "Downloading release $url to $tarpath"
+        run::logFailed curl -Lm 600 --retry 1 "$url" -o "$tarpath.tmp" \
+        && run::logFailed mv -f "$tarpath.tmp" "$tarpath" \
+        && run::logFailed chmod a+r "$tarpath" \
+        && run::logFailed tar -Oxzf "$tarpath" './bin/installdependencies.sh' | sudo bash >&2 \
         || return $?
     fi
     echo "$tarpath"
@@ -211,7 +229,7 @@ function mr::downloadRunner {
 #   $?: 0 if successful and non-zero otherwise
 function mr::addRunner {
     local user="$1" org="$2" repo="$3" token="$4" extraLabels="$5" group="${6:-default}" dotenv="$7" tarpath=''
-    str::isVarNotEmpty org || return $?
+    str::varNotEmpty org || return $?
     tarpath="$(mr::downloadRunner)" || return $?
     [[ -z "$token" ]] && { token="$(mr::pat2token "$org" "$repo")" || return $?; }
     user="$(mr::addUser "$user")" || return $?
@@ -226,9 +244,8 @@ function mr::addRunner {
     local url=''
     [[ -n "$repo" ]] && url="$MR_GIHUB_BASEURL/$org/$repo" || url="$MR_GIHUB_BASEURL/$org"
 
-    log::stderr DEBUG "Adding runner into local user '$user' for $url"
-    # `sudo -Hiu "$user"` only adopt $PATH defined in /etc/sudoers
-    run::logIfFailed sudo su --login "$user" -- -eo pipefail <<- __
+    log::_ INFO "Adding runner into local user '$user' for $url"
+    run::logFailed sudo su --login "$user" -- -eo pipefail <<- __
         mkdir -p runner/mr.d && cd runner/mr.d
         echo -n '$org' > org && echo -n '$repo' > repo && echo -n '$url' > url
         echo -n '$name' > name && echo -n '$labels' > labels && echo -n '$tarpath' > tarpath
@@ -247,37 +264,37 @@ __
 #   $?: 0 if successful and non-zero otherwise
 function mr::delRunner {
     local user="$1" org="$2" repo="$3" token="$4"
-    str::isVarNotEmpty user || return $?
+    str::varNotEmpty user || return $?
 
     if [[ -z "$token" ]]; then
-        [[ -z "$org" ]] && org="$(run::logIfFailed sudo -Hiu "$user" -- cat runner/mr.d/org)"
-        [[ -z "$repo" ]] && repo="$(run::logIfFailed sudo -Hiu "$user" -- cat runner/mr.d/repo)"
+        [[ -z "$org" ]] && org="$(run::logFailed sudo -Hiu "$user" -- cat runner/mr.d/org)"
+        [[ -z "$repo" ]] && repo="$(run::logFailed sudo -Hiu "$user" -- cat runner/mr.d/repo)"
         token="$(mr::pat2token "$org" "$repo")"
     fi
 
-    log::stderr DEBUG "Deleting runner local user '$user'"
-    run::logIfFailed sudo su --login "$user" -- <<- __
+    log::_ INFO "Deleting runner and local user '$user'"
+    run::logFailed sudo su --login "$user" -- <<- __
         cd runner
         sudo ./svc.sh stop && sudo ./svc.sh uninstall
         ./config.sh remove --token '$token'
 __
-    run::logIfFailed sudo userdel -rf "$user" || return $?
+    run::log sudo userdel -rf "$user" || return $?
 }
 
 # List all runners
 #   $?: 0 if successful and non-zero otherwise
 #   stdout: all runners
 function mr::listRunners {
+    run::exists jq || return $?
     local users=''
-    mr::pretest || return $?
-    users="$(run::logIfFailed getent group 'runners' | cut -d: -f4 | tr ',' '\n')" || return $?
+    users="$(run::logFailed getent group 'runners' | cut -d: -f4 | tr ',' '\n')" || return $?
     while read -r user; do [[ -z "$user" ]] && continue
         echo -n "$user"
         echo -n " $(sudo -Hiu "$user" -- du -h --summarize|cut -f1)"
         echo -n " $(sudo -Hiu "$user" -- jq -Mcre .gitHubUrl runner/.runner)"
         echo
     done <<< "$users" # user
-    run::logIfFailed systemctl list-units -al --no-pager 'actions.runner.*' >&2 || return $?
+    run::log systemctl list-units -al --no-pager 'actions.runner.*' >&2 || return $?
 }
 
 # Temporary test
@@ -298,16 +315,16 @@ Environment variables:
 
 Sub-commands:
   add       Add one self-hosted runner on this host
-            e.g. $FILE_THIS add --org ORG --repo REPO --labels cloud:ali,region:cn-shanghai
+            e.g. ${BASH_SOURCE[0]} add --org ORG --repo REPO --labels cloud:ali,region:cn-shanghai
   del       Delete one self-hosted runner on this host
-            e.g. $FILE_THIS del --user runner-1
+            e.g. ${BASH_SOURCE[0]} del --user runner-1
   list      List all runners on this host
-            e.g. $FILE_THIS list
+            e.g. ${BASH_SOURCE[0]} list
   download  Download GitHub Actions Runner release tar to /tmp/
             Detect latest on github.com/actions/runner/releases if MR_RELEASE_URL empty
-            e.g. $FILE_THIS download
+            e.g. ${BASH_SOURCE[0]} download
   pat2token Get runner registration token from GitHub PAT (MR_GITHUB_PAT)
-            e.g. $FILE_THIS pat2token --org SOME_OWNER --repo SOME_REPO
+            e.g. ${BASH_SOURCE[0]} pat2token --org SOME_OWNER --repo SOME_REPO
 
 Options:
   --org     GitHub organization name
@@ -329,7 +346,7 @@ function mr::main {
 
     # parse options into variables
     getopt_output="$(getopt -o h -l help,org:,repo:,user:,labels:,token:,group:,dotenv: -n "$FILE_THIS" -- "$@")"
-    log::ifFailed $? "getopt failed!" || return $?
+    log::failed $? "getopt failed!" || return $?
     eval set -- "$getopt_output"
 
     while true; do
@@ -343,7 +360,7 @@ function mr::main {
             --group) group="$2"; shift 2 ;;
             --dotenv) dotenv+="$2"$'\n'; shift 2 ;;
             --) shift ; break ;;
-            *) log::stderr ERROR "Invalid option '$1'! See '$FILE_THIS help'."; return 255;;
+            *) log::_ ERROR "Invalid option '$1'! See '$FILE_THIS help'."; return 255;;
         esac
     done
 
@@ -358,7 +375,7 @@ function mr::main {
         pat2token) mr::pat2token "$org" "$repo" ;;
         help|'') echo -n "$HELP" >&2 ;;
         test) mr::test "$@" ;;
-        *) log::stderr ERROR "Invalid command '$1'! See '$FILE_THIS help'."; return 255 ;;
+        *) log::_ ERROR "Invalid command '$1'! See '$FILE_THIS help'."; return 255 ;;
     esac
 }
 
