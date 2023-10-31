@@ -211,9 +211,9 @@ function mr::downloadRunner {
         log::_ INFO "Downloading release $url to $tarpath"
         run::logFailed curl -Lm 600 --retry 1 "$url" -o "$tarpath.tmp" \
         && run::logFailed mv -f "$tarpath.tmp" "$tarpath" \
-        && run::logFailed chmod a+r "$tarpath" \
-        && run::logFailed tar -Oxzf "$tarpath" './bin/installdependencies.sh' | sudo bash >&2 \
-        || return $?
+        && run::logFailed chmod a+r "$tarpath" || return $?
+        log::_ INFO "Checking runner dependencies"
+        run::logFailed tar -Oxzf "$tarpath" './bin/installdependencies.sh' | sudo bash >&2 || return $?
     fi
     echo "$tarpath"
 }
