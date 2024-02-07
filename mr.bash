@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1091
 # https://github.com/vbem/multi-runners
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -39,23 +40,23 @@ declare -rg MR_URL='https://github.com/vbem/multi-runners'
 #   stderr: log message
 function log::_ {
     local each pos color level datetime
-    for each in "${FUNCNAME[@]}"; do \
-        [[ "$each" != log::_ ]] && \
-        [[ "$each" != log::failed ]] && \
-        [[ "$each" != run::logFailed ]] && \
-        [[ "$each" != run::log ]] && \
-        [[ "$each" != main ]] && \
-        [[ "$each" != *::main ]] && \
-        [[ "$each" != *::_* ]] && \
-        pos="/$each$pos"
+    for each in "${FUNCNAME[@]}"; do
+        [[ "$each" != log::_ ]] \
+            && [[ "$each" != log::failed ]] \
+            && [[ "$each" != run::logFailed ]] \
+            && [[ "$each" != run::log ]] \
+            && [[ "$each" != main ]] \
+            && [[ "$each" != *::main ]] \
+            && [[ "$each" != *::_* ]] \
+            && pos="/$each$pos"
     done
     case "$1" in
-        FATAL)          color="5;1;91" ;;
-        ERR*)           color="1;91" ;;
-        WARN*)          color="95" ;;
-        INFO*|NOTICE)   color="92" ;;
-        DEBUG)          color="94" ;;
-        *)              color="96" ;;
+        FATAL) color="5;1;91" ;;
+        ERR*) color="1;91" ;;
+        WARN*) color="95" ;;
+        INFO* | NOTICE) color="92" ;;
+        DEBUG) color="94" ;;
+        *) color="96" ;;
     esac
     datetime="\e[3;2;90m$(date -Isecond)\e[0m"
     pos="\e[3;90m${pos:1}\e[0m"
@@ -69,7 +70,7 @@ function log::_ {
 #   $?: previous return code
 #   stderr: message string
 function log::failed {
-    (( "$1" != 0 )) && log::_ ERROR "$2"
+    (("$1" != 0)) && log::_ ERROR "$2"
     return "$1"
 }
 
@@ -102,7 +103,7 @@ function run::log {
 function run::exists {
     local each=''
     for each in "$@"; do
-        command -v "$each" &> /dev/null
+        command -v "$each" &>/dev/null
         log::failed $? "Not found command '$each'!" || return $?
     done
 }
@@ -146,22 +147,22 @@ function mr::addUser {
         local -i index=0
         while :; do
             user="${MR_USER_PREFIX}$((index++))"
-            id -u "$user" &> /dev/null || break
+            id -u "$user" &>/dev/null || break
         done
     fi
-    run::logFailed sudo tee /etc/sudoers.d/runners <<< '%runners ALL=(ALL) NOPASSWD:ALL' > /dev/null \
-    && run::logFailed sudo groupadd -f 'runners' >&2 \
-    && run::logFailed sudo groupadd -f 'docker' >&2 \
-    && run::log sudo useradd -m -s /bin/bash -G 'runners,docker' "$user" >&2 || return $?
+    run::logFailed sudo tee /etc/sudoers.d/runners <<<'%runners ALL=(ALL) NOPASSWD:ALL' >/dev/null \
+        && run::logFailed sudo groupadd -f 'runners' >&2 \
+        && run::logFailed sudo groupadd -f 'docker' >&2 \
+        && run::log sudo useradd -m -s /bin/bash -G 'runners,docker' "$user" >&2 || return $?
     echo "$user"
 }
 
 # Print the number of processing units available to the current process
 #   stdout: number, defaults to 2
 function mr::nproc {
-    local -i num=0;
+    local -i num=0
     num="$(run::logFailed nproc)"
-    (( num > 0 )) && echo "$num" || echo 2
+    ((num > 0)) && echo "$num" || echo 2
 }
 
 # Get time-limited registration token from PAT
@@ -184,9 +185,9 @@ function mr::pat2token {
         -H "Accept: application/vnd.github+json" \
         -H "Authorization: Bearer ${MR_GITHUB_PAT}" \
         -H "X-GitHub-Api-Version: 2022-11-28" \
-        "$api" )" || log::failed $? "Call API failed: $api" || return $?
+        "$api")" || log::failed $? "Call API failed: $api" || return $?
 
-    jq -Mcre .token <<< "$res" || log::failed $? "Parse registration-token failed! response: $res" || return $?
+    jq -Mcre .token <<<"$res" || log::failed $? "Parse registration-token failed! response: $res" || return $?
 }
 
 # Download and cache GitHub Actions Runner to local /tmp/
@@ -202,7 +203,7 @@ function mr::downloadRunner {
         run::exists jq || return $?
         url="$(
             run::logFailed curl -Lsm 3 --retry 1 https://api.github.com/repos/actions/runner/releases/latest \
-            | jq -Mcre '.assets[].browser_download_url|select(test("linux-x64-[^-]+\\.tar\\.gz"))'
+                | jq -Mcre '.assets[].browser_download_url|select(test("linux-x64-[^-]+\\.tar\\.gz"))'
         )" || return $?
     fi
 
@@ -210,8 +211,8 @@ function mr::downloadRunner {
     if [[ ! -r "$tarpath" ]]; then
         log::_ INFO "Downloading from $url to $tarpath"
         run::logFailed curl -Lm 600 --retry 1 "$url" -o "$tarpath.tmp" \
-        && run::logFailed mv -f "$tarpath.tmp" "$tarpath" \
-        && run::logFailed chmod a+r "$tarpath" || return $?
+            && run::logFailed mv -f "$tarpath.tmp" "$tarpath" \
+            && run::logFailed chmod a+r "$tarpath" || return $?
         log::_ INFO "Checking runner dependencies"
         run::logFailed tar -Oxzf "$tarpath" './bin/installdependencies.sh' | sudo bash >&2 || return $?
     fi
@@ -237,7 +238,7 @@ function mr::addRunner {
     local name="$user@$HOSTNAME"
 
     local labels="controller:${MR_URL#https://},username:$user,hostname:$HOSTNAME"
-    [[ -r /etc/os-release ]] && labels="$labels,os:$(source /etc/os-release && echo $ID-$VERSION_ID)"
+    [[ -r /etc/os-release ]] && labels="$labels,os:$(source /etc/os-release && echo "$ID-$VERSION_ID")"
     [[ -n "$repo" ]] && labels="$labels,$org/$repo" || labels="$labels,$org"
     [[ -n "$extraLabels" ]] && labels="$labels,$extraLabels"
 
@@ -245,15 +246,15 @@ function mr::addRunner {
     [[ -n "$repo" ]] && url="$MR_GIHUB_BASEURL/$org/$repo" || url="$MR_GIHUB_BASEURL/$org"
 
     log::_ INFO "Adding runner into local user '$user' for $url"
-    run::logFailed sudo su --login "$user" -- -eo pipefail <<- __
-        mkdir -p runner/mr.d && cd runner/mr.d
-        echo -n '$org' > org && echo -n '$repo' > repo && echo -n '$url' > url
-        echo -n '$name' > name && echo -n '$labels' > labels && echo -n '$tarpath' > tarpath
-        cd .. && tar -xzf "$tarpath"
-        echo "$dotenv" >> .env
-        ./config.sh --unattended --replace --url '$url' --token '$token' --name '$name' --labels '$labels' --runnergroup '$group'
-        sudo ./svc.sh install '$user' && sudo ./svc.sh start
-__
+    run::logFailed sudo su --login "$user" -- -eo pipefail <<-__
+		mkdir -p runner/mr.d && cd runner/mr.d
+		echo -n '$org' > org && echo -n '$repo' > repo && echo -n '$url' > url
+		echo -n '$name' > name && echo -n '$labels' > labels && echo -n '$tarpath' > tarpath
+		cd .. && tar -xzf "$tarpath"
+		echo "$dotenv" >> .env
+		./config.sh --unattended --replace --url '$url' --token '$token' --name '$name' --labels '$labels' --runnergroup '$group'
+		sudo ./svc.sh install '$user' && sudo ./svc.sh start
+	__
 }
 
 # Delete GitHub Actions Runner by local username
@@ -273,11 +274,11 @@ function mr::delRunner {
     fi
 
     log::_ INFO "Deleting runner and local user '$user'"
-    run::logFailed sudo su --login "$user" -- <<- __
-        cd runner
-        sudo ./svc.sh stop && sudo ./svc.sh uninstall
-        ./config.sh remove --token '$token'
-__
+    run::logFailed sudo su --login "$user" -- <<-__
+		cd runner
+		sudo ./svc.sh stop && sudo ./svc.sh uninstall
+		./config.sh remove --token '$token'
+	__
     run::log sudo userdel -rf "$user" || return $?
 }
 
@@ -289,18 +290,19 @@ function mr::listRunners {
     run::exists jq || return $?
     local users=''
     users="$(run::logFailed getent group 'runners' | cut -d: -f4 | tr ',' '\n')" || return $?
-    while read -r user; do [[ -z "$user" ]] && continue
+    while read -r user; do
+        [[ -z "$user" ]] && continue
         echo -n "$user"
-        echo -n " $(sudo -Hiu "$user" -- du -h --summarize|cut -f1)"
+        echo -n " $(sudo -Hiu "$user" -- du -h --summarize | cut -f1)"
         echo -n " $(sudo -Hiu "$user" -- jq -Mcre .gitHubUrl runner/.runner)"
         echo
-    done <<< "$users" # user
+    done <<<"$users" # user
     run::log systemctl list-units -al --no-pager 'actions.runner.*' >&2 || return $?
 }
 
 # Temporary test
 function mr::test {
-    :
+    log::_ INFO "Self testing ..."
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -352,31 +354,62 @@ function mr::main {
 
     while true; do
         case "$1" in
-            -h|--help) echo -n "$HELP" && return ;;
-            --org) org="$2"; shift 2 ;;
-            --repo) repo="$2"; shift 2 ;;
-            --user) user="$2"; shift 2 ;;
-            --labels) labels="$2"; shift 2 ;;
-            --token) token="$2"; shift 2 ;;
-            --group) group="$2"; shift 2 ;;
-            --dotenv) dotenv+="$2"$'\n'; shift 2 ;;
-            --) shift ; break ;;
-            *) log::_ ERROR "Invalid option '$1'! See '$FILE_THIS help'."; return 255;;
+            -h | --help) echo -n "$HELP" && return ;;
+            --org)
+                org="$2"
+                shift 2
+                ;;
+            --repo)
+                repo="$2"
+                shift 2
+                ;;
+            --user)
+                user="$2"
+                shift 2
+                ;;
+            --labels)
+                labels="$2"
+                shift 2
+                ;;
+            --token)
+                token="$2"
+                shift 2
+                ;;
+            --group)
+                group="$2"
+                shift 2
+                ;;
+            --dotenv)
+                dotenv+="$2"$'\n'
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            *)
+                log::_ ERROR "Invalid option '$1'! See '$FILE_THIS help'."
+                return 255
+                ;;
         esac
     done
 
     # parse sub-commands into functions
-    subCmd="$1"; shift
+    subCmd="$1"
+    shift
     case "$subCmd" in
-        add) mr::addRunner "$user" "$org" "$repo" "$token" "$labels" "$group" "$dotenv";;
+        add) mr::addRunner "$user" "$org" "$repo" "$token" "$labels" "$group" "$dotenv" ;;
         del) mr::delRunner "$user" "$org" "$repo" "$token" ;;
         list) mr::listRunners ;;
         status) mr::statusRunner "$user" ;;
         download) mr::downloadRunner ;;
         pat2token) mr::pat2token "$org" "$repo" ;;
-        help|'') echo -n "$HELP" >&2 ;;
+        help | '') echo -n "$HELP" >&2 ;;
         test) mr::test "$@" ;;
-        *) log::_ ERROR "Invalid command '$1'! See '$FILE_THIS help'."; return 255 ;;
+        *)
+            log::_ ERROR "Invalid command '$1'! See '$FILE_THIS help'."
+            return 255
+            ;;
     esac
 }
 
