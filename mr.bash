@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091
 # https://github.com/vbem/multi-runners
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -13,7 +12,8 @@ FILE_THIS="$(basename "${BASH_SOURCE[0]}")"
 declare -rg DIR_THIS FILE_THIS
 
 # only for local debug if .env file exists
-[[ -f "$DIR_THIS/.env" ]] && source "$DIR_THIS/.env"
+# shellcheck disable=SC1091
+[[ -r "$DIR_THIS/.env" ]] && source "$DIR_THIS/.env"
 
 # environment variables for customization
 # Github personal access token
