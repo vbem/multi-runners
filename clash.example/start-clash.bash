@@ -28,10 +28,10 @@ declare -rg clash_mixed_port
 declare -rg clash_mixed_port_publish_ip='127.0.0.1'
 
 docker run \
-  --name "$(basename "$clash_image"|cut -d: -f1)" \
-  --detach \
-  --restart always \
-  --env TZ='Asia/Shanghai' \
-  --volume "$clash_config_path:/root/.config/clash/config.yaml:ro" \
-  --publish "$clash_mixed_port_publish_ip:$clash_mixed_port:$clash_mixed_port" \
-  "$clash_image"
+    --name "$(basename "$clash_image" | cut -d: -f1)" \
+    --detach \
+    --restart always \
+    --env TZ='Asia/Shanghai' \
+    --volume "$clash_config_path:/root/.config/clash/config.yaml:ro" \
+    --publish "$clash_mixed_port_publish_ip:$clash_mixed_port:$clash_mixed_port" \
+    "$clash_image"

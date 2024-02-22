@@ -10,7 +10,7 @@ on:
 
 jobs:
   test:
-    runs-on: [self-hosted, '${{ github.repository }}']
+    runs-on: [self-hosted, "${{ github.repository }}"]
 
     steps:
       - run: |
@@ -19,4 +19,3 @@ jobs:
           curl myip.ipip.net
       - run: |
           curl -s -4 icanhazip.com
-...

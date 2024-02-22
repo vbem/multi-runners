@@ -14,7 +14,7 @@ proxies:
     cipher: chacha20-ietf-poly1305 # 👈 TODO: paste your `ss-server` cipher
     server: ss.example.com # 👈 TODO: paste your `ss-server` address
     port: 12345 # 👈 TODO: paste your `ss-server` port
-    password: 'Berlin Wall has long been down' # 👈 TODO: paste your `ss-server` password
+    password: "Berlin Wall has long been down" # 👈 TODO: paste your `ss-server` password
 
 # only route GitHub and specific traffics to remote proxy
 mode: rule
@@ -31,4 +31,3 @@ rules:
 
   # defaults to direct
   - MATCH,DIRECT
-...

@@ -17,4 +17,3 @@ jobs:
       packages: read
       statuses: write
     uses: vbem/reusable/.github/workflows/superlinter.yml@v1
-...

@@ -51,12 +51,12 @@ function log::_ {
             && pos="/$each$pos"
     done
     case "$1" in
-        FATAL) color="5;1;91" ;;
-        ERR*) color="1;91" ;;
-        WARN*) color="95" ;;
-        INFO* | NOTICE) color="92" ;;
-        DEBUG) color="94" ;;
-        *) color="96" ;;
+    FATAL) color="5;1;91" ;;
+    ERR*) color="1;91" ;;
+    WARN*) color="95" ;;
+    INFO* | NOTICE) color="92" ;;
+    DEBUG) color="94" ;;
+    *) color="96" ;;
     esac
     datetime="\e[3;2;90m$(date -Isecond)\e[0m"
     pos="\e[3;90m${pos:1}\e[0m"
@@ -354,43 +354,43 @@ function mr::main {
 
     while true; do
         case "$1" in
-            -h | --help) echo -n "$HELP" && return ;;
-            --org)
-                org="$2"
-                shift 2
-                ;;
-            --repo)
-                repo="$2"
-                shift 2
-                ;;
-            --user)
-                user="$2"
-                shift 2
-                ;;
-            --labels)
-                labels="$2"
-                shift 2
-                ;;
-            --token)
-                token="$2"
-                shift 2
-                ;;
-            --group)
-                group="$2"
-                shift 2
-                ;;
-            --dotenv)
-                dotenv+="$2"$'\n'
-                shift 2
-                ;;
-            --)
-                shift
-                break
-                ;;
-            *)
-                log::_ ERROR "Invalid option '$1'! See '$FILE_THIS help'."
-                return 255
-                ;;
+        -h | --help) echo -n "$HELP" && return ;;
+        --org)
+            org="$2"
+            shift 2
+            ;;
+        --repo)
+            repo="$2"
+            shift 2
+            ;;
+        --user)
+            user="$2"
+            shift 2
+            ;;
+        --labels)
+            labels="$2"
+            shift 2
+            ;;
+        --token)
+            token="$2"
+            shift 2
+            ;;
+        --group)
+            group="$2"
+            shift 2
+            ;;
+        --dotenv)
+            dotenv+="$2"$'\n'
+            shift 2
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            log::_ ERROR "Invalid option '$1'! See '$FILE_THIS help'."
+            return 255
+            ;;
         esac
     done
 
@@ -398,18 +398,18 @@ function mr::main {
     subCmd="$1"
     shift
     case "$subCmd" in
-        add) mr::addRunner "$user" "$org" "$repo" "$token" "$labels" "$group" "$dotenv" ;;
-        del) mr::delRunner "$user" "$org" "$repo" "$token" ;;
-        list) mr::listRunners ;;
-        status) mr::statusRunner "$user" ;;
-        download) mr::downloadRunner ;;
-        pat2token) mr::pat2token "$org" "$repo" ;;
-        help | '') echo -n "$HELP" >&2 ;;
-        test) mr::test "$@" ;;
-        *)
-            log::_ ERROR "Invalid command '$1'! See '$FILE_THIS help'."
-            return 255
-            ;;
+    add) mr::addRunner "$user" "$org" "$repo" "$token" "$labels" "$group" "$dotenv" ;;
+    del) mr::delRunner "$user" "$org" "$repo" "$token" ;;
+    list) mr::listRunners ;;
+    status) mr::statusRunner "$user" ;;
+    download) mr::downloadRunner ;;
+    pat2token) mr::pat2token "$org" "$repo" ;;
+    help | '') echo -n "$HELP" >&2 ;;
+    test) mr::test "$@" ;;
+    *)
+        log::_ ERROR "Invalid command '$1'! See '$FILE_THIS help'."
+        return 255
+        ;;
     esac
 }
 
