@@ -258,7 +258,7 @@ function mr::addRunner {
             chcon -t bin_t ./runsvc.sh
         fi
         sudo ./svc.sh start
-    __
+__
 }
 
 # Delete GitHub Actions Runner by local username
@@ -282,7 +282,7 @@ function mr::delRunner {
         cd runner
         sudo ./svc.sh stop && sudo ./svc.sh uninstall
         ./config.sh remove --token '$token'
-    __
+__
     run::log sudo userdel -rf "$user" || return $?
 }
 
