@@ -254,8 +254,8 @@ function mr::addRunner {
         echo "$dotenv" >> .env
         ./config.sh --unattended --replace --url '$url' --token '$token' --name '$name' --labels '$labels' --runnergroup '$group'
         sudo ./svc.sh install '$user'
-        if selinuxenabled &>/dev/null; then # https://github.com/vbem/multi-runners/issues/9
-            chcon -t bin_t ./runsvc.sh
+        if [[ "$(getenforce 2>/dev/null)" == "Enforcing" ]]; then
+            chcon -t bin_t ./runsvc.sh # https://github.com/vbem/multi-runners/issues/9
         fi
         sudo ./svc.sh start
 __
