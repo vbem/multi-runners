@@ -247,14 +247,18 @@ function mr::addRunner {
 
     log::_ INFO "Adding runner into local user '$user' for $url"
     run::logFailed sudo su --login "$user" -- -eo pipefail <<-__
-		mkdir -p runner/mr.d && cd runner/mr.d
-		echo -n '$org' > org && echo -n '$repo' > repo && echo -n '$url' > url
-		echo -n '$name' > name && echo -n '$labels' > labels && echo -n '$tarpath' > tarpath
-		cd .. && tar -xzf "$tarpath"
-		echo "$dotenv" >> .env
-		./config.sh --unattended --replace --url '$url' --token '$token' --name '$name' --labels '$labels' --runnergroup '$group'
-		sudo ./svc.sh install '$user' && sudo ./svc.sh start
-	__
+        mkdir -p runner/mr.d && cd runner/mr.d
+        echo -n '$org' > org && echo -n '$repo' > repo && echo -n '$url' > url
+        echo -n '$name' > name && echo -n '$labels' > labels && echo -n '$tarpath' > tarpath
+        cd .. && tar -xzf "$tarpath"
+        echo "$dotenv" >> .env
+        ./config.sh --unattended --replace --url '$url' --token '$token' --name '$name' --labels '$labels' --runnergroup '$group'
+        sudo ./svc.sh install '$user'
+        if selinuxenabled &>/dev/null; then # https://github.com/vbem/multi-runners/issues/9
+            chcon -t bin_t ./runsvc.sh
+        fi
+        sudo ./svc.sh start
+    __
 }
 
 # Delete GitHub Actions Runner by local username
@@ -275,10 +279,10 @@ function mr::delRunner {
 
     log::_ INFO "Deleting runner and local user '$user'"
     run::logFailed sudo su --login "$user" -- <<-__
-		cd runner
-		sudo ./svc.sh stop && sudo ./svc.sh uninstall
-		./config.sh remove --token '$token'
-	__
+        cd runner
+        sudo ./svc.sh stop && sudo ./svc.sh uninstall
+        ./config.sh remove --token '$token'
+    __
     run::log sudo userdel -rf "$user" || return $?
 }
 
