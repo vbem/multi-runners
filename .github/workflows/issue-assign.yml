@@ -14,4 +14,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ github.token }}
       run: |
-        gh issue assign "${{ github.event.issue.number }}" --assignee "${{ github.repository_owner }}"
+        # https://docs.github.com/en/github-cli
+        # https://cli.github.com/manual/gh_issue
+        gh issue edit  "${{ github.event.issue.number }}" --add-assignee "${{ github.repository_owner }}"
