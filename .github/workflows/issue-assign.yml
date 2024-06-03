@@ -1,0 +1,17 @@
+---
+name: Auto Assign Issues
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  assign:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Assign issue to repository owner
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        gh issue assign "${{ github.event.issue.number }}" --assignee "${{ github.repository_owner }}"
