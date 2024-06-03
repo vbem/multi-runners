@@ -16,4 +16,4 @@ jobs:
       run: |
         # https://docs.github.com/en/github-cli
         # https://cli.github.com/manual/gh_issue
-        gh issue edit  "${{ github.event.issue.number }}" --add-assignee "${{ github.repository_owner }}"
+        gh issue edit  "${{ github.event.issue.number }}" --add-assignee "${{ github.repository_owner }}" --repo "${{ github.repository }}"
