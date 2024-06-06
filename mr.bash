@@ -153,7 +153,7 @@ function mr::addUser {
     run::logFailed sudo tee /etc/sudoers.d/runners <<<'%runners ALL=(ALL) NOPASSWD:ALL' >/dev/null \
         && run::logFailed sudo groupadd -f 'runners' >&2 \
         && run::logFailed sudo groupadd -f 'docker' >&2 \
-        && run::log sudo useradd -m -s /bin/bash -G 'runners,docker' "$user" >&2 || return $?
+        && run::log sudo useradd -b "${base:-/home}" -m -s /bin/bash -G 'runners,docker' "$user" >&2 || return $?
     echo "$user"
 }
 
@@ -337,6 +337,7 @@ Options:
   --org     GitHub organization name
   --repo    GitHub repository name, registration on organization-level if empty
   --user    Linux local username of runner
+  --base    Base directory for user home directories
   --labels  Extra labels for the runner
   --group   Runner group for the runner
   --token   Runner registration token, takes precedence over MR_GITHUB_PAT
@@ -352,7 +353,7 @@ function mr::main {
     local org='' repo='' user='' labels='' token='' group='' dotenv=''
 
     # parse options into variables
-    getopt_output="$(getopt -o h -l help,org:,repo:,user:,labels:,token:,group:,dotenv: -n "$FILE_THIS" -- "$@")"
+    getopt_output="$(getopt -o h -l help,org:,repo:,base:,user:,labels:,token:,group:,dotenv: -n "$FILE_THIS" -- "$@")"
     log::failed $? "getopt failed!" || return $?
     eval set -- "$getopt_output"
 
@@ -369,6 +370,10 @@ function mr::main {
             ;;
         --user)
             user="$2"
+            shift 2
+            ;;
+        --base)
+            base="$2"
             shift 2
             ;;
         --labels)

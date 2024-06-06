@@ -45,6 +45,7 @@ Options:
   --org     GitHub organization name
   --repo    GitHub repository name, registration on organization-level if empty
   --user    Linux local username of runner
+  --base    Base directory for user home directories
   --labels  Extra labels for the runner
   --group   Runner group for the runner
   --token   Runner registration token, takes precedence over MR_GITHUB_PAT
