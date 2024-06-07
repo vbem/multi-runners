@@ -26,6 +26,7 @@ Environment variables:
   MR_GIHUB_BASEURL=https://github.com
   MR_GIHUB_API_BASEURL=https://api.github.com
   MR_RELEASE_URL=<latest on github.com/actions/runner/releases>
+  MR_USER_BASE=/home
   MR_GITHUB_PAT=github_pat_***
 
 Sub-commands:
@@ -45,7 +46,6 @@ Options:
   --org     GitHub organization name
   --repo    GitHub repository name, registration on organization-level if empty
   --user    Linux local username of runner
-  --base    Base directory for user home directories
   --labels  Extra labels for the runner
   --group   Runner group for the runner
   --token   Runner registration token, takes precedence over MR_GITHUB_PAT
@@ -117,6 +117,8 @@ To setup multi-runners, you can simplify run following command multi times:
 ./mr.bash add --org <ORG-NAME-2>
 ./mr.bash add --org <ORG-NAME-2>
 ```
+
+This application will create one Linux local user for one runner via `useradd` command. The *Base Directory* of these users is read from `HOME` setting in your `/etc/default/useradd` file by default (typically `/home`). You can also set it in environment variable `MR_USER_BASE` to override system-wide default.
 
 ### List all runners on current host
 
