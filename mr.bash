@@ -27,7 +27,7 @@ declare -rg MR_GIHUB_BASEURL="${MR_GIHUB_BASEURL:-https://github.com}"
 # runners' local username prefix, defaults to `runner-`
 declare -rg MR_USER_PREFIX="${MR_USER_PREFIX:-runner-}"
 # runners' local users base directory, overrides the `HOME` setting in `/etc/default/useradd`
-declare -rg MR_USER_BASE="${MR_USER_BASE:-$(useradd -D | grep '^HOME=' | cut -d= -f2-)}"
+declare -rg MR_USER_BASE
 # URL of this application
 declare -rg MR_URL='https://github.com/vbem/multi-runners'
 
@@ -152,10 +152,12 @@ function mr::addUser {
             id -u "$user" &>/dev/null || break
         done
     fi
+    useraddArgs=(-m -s /bin/bash -G 'runners,docker')
+    [[ -n "$MR_USER_BASE" ]] && useraddArgs+=('-b' "$MR_USER_BASE")
     run::logFailed sudo tee /etc/sudoers.d/runners <<<'%runners ALL=(ALL) NOPASSWD:ALL' >/dev/null \
         && run::logFailed sudo groupadd -f 'runners' >&2 \
         && run::logFailed sudo groupadd -f 'docker' >&2 \
-        && run::log sudo useradd -b "$MR_USER_BASE" -m -s /bin/bash -G 'runners,docker' "$user" >&2 || return $?
+        && run::log sudo useradd "${useraddArgs[@]}" "$user" >&2 || return $?
     echo "$user"
 }
 
@@ -320,7 +322,7 @@ Environment variables:
   MR_GIHUB_BASEURL=$MR_GIHUB_BASEURL
   MR_GIHUB_API_BASEURL=$MR_GIHUB_API_BASEURL
   MR_RELEASE_URL=${MR_RELEASE_URL:-<latest on github.com/actions/runner/releases>}
-  MR_USER_BASE=$MR_USER_BASE
+  MR_USER_BASE=${MR_USER_BASE:-<default in /etc/default/useradd>}
   MR_GITHUB_PAT=${MR_GITHUB_PAT::11}${MR_GITHUB_PAT:+***}
 
 Sub-commands:
