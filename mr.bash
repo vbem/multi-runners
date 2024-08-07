@@ -205,10 +205,13 @@ function mr::downloadRunner {
 
     if [[ -z "$url" ]]; then
         run::exists jq || return $?
+        curlArgs=(-Lsm 3 --retry 1)
+        # https://github.com/vbem/multi-runners/pull/16
+        [[ -n "$MR_GITHUB_PAT" ]] && curlArgs+=('-H' "Authorization: Bearer ${MR_GITHUB_PAT}")
         url="$(
-            run::logFailed curl -Lsm 3 --retry 1 -H "Authorization: Bearer ${MR_GITHUB_PAT}" https://api.github.com/repos/actions/runner/releases/latest \
+            curl "${curlArgs[@]}" https://api.github.com/repos/actions/runner/releases/latest \
                 | jq -Mcre '.assets[].browser_download_url|select(test("linux-x64-[^-]+\\.tar\\.gz"))'
-        )" || return $?
+        )" || log::failed $? "Fetching latest version number failed, check PAT or rate limit!" || return $?
     fi
 
     tarpath="/tmp/$(run::logFailed basename "$url")" || return $?
