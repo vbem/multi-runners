@@ -206,7 +206,7 @@ function mr::downloadRunner {
     if [[ -z "$url" ]]; then
         run::exists jq || return $?
         url="$(
-            run::logFailed curl -Lsm 3 --retry 1 https://api.github.com/repos/actions/runner/releases/latest \
+            run::logFailed curl -Lsm 3 --retry 1 -H "Authorization: Bearer ${MR_GITHUB_PAT}" https://api.github.com/repos/actions/runner/releases/latest \
                 | jq -Mcre '.assets[].browser_download_url|select(test("linux-x64-[^-]+\\.tar\\.gz"))'
         )" || return $?
     fi
