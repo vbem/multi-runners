@@ -261,8 +261,8 @@ function mr::addRunner {
     local user="$1" enterprise="$2" org="$3" repo="$4" token="$5" extraLabels="$6" group="${7:-default}" dotenv="$8" tarpath=''
     str::allVarsNotEmpty enterprise org || return $?
 
-    tarpath="$(mr::downloadRunner)" || return $?
     [[ -z "$token" ]] && { token="$(mr::pat2token "$enterprise" "$org" "$repo")" || return $?; }
+    tarpath="$(mr::downloadRunner)" || return $?
     user="$(mr::addUser "$user")" || return $?
 
     local name="$user@$HOSTNAME"
@@ -276,10 +276,10 @@ function mr::addRunner {
         url="$MR_GITHUB_BASEURL/enterprises/$enterprise"
         labels="$labels,$enterprise"
     elif [[ -z "$repo" ]]; then
-        url="$MR_GITHUB_BASEURL/orgs/$org"
+        url="$MR_GITHUB_BASEURL/$org"
         labels="$labels,$org"
     else
-        url="$MR_GITHUB_BASEURL/repos/$org/$repo"
+        url="$MR_GITHUB_BASEURL/$org/$repo"
         labels="$labels,$org/$repo"
     fi
 
