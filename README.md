@@ -11,9 +11,9 @@
 
 This application is designed for controlling multi [self-hosted GitHub Action runners](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/about-self-hosted-runners) on single host, when [Actions Runner Controller (ARC)](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller/quickstart-for-actions-runner-controller) is not feasible in your engineering environment. This application has following advantages:
 
-- Only single Linux host required.
-- Simple as more as possible, single Bash script.
-- Lightweight wrapper of official self-hosted runner.
+- Single Linux host required.
+- Single Bash script.
+- Lightweight wrapper of [GitHub official self-hosted runner](https://github.com/actions/runner).
 - Both *github.com* and *GitHub Enterprise* are support.
 - Either *organization* or *repository* or *GitHub Cloud Enterprise* level runners are supported.
 
@@ -95,7 +95,7 @@ If environment variable `MR_RELEASE_URL` is empty, this application will downloa
 ./mr.bash download
 ```
 
-If your Linux host is Internet bandwidth limited, you can also manually upload it from laptop to `/tmp/<tar.gz file name>`, and set the `MR_RELEASE_URL` env in `.env` file, e.g. `/tmp/actions-runner-linux-x64-2.345.6.tar.gz`.
+If your Linux host is internet bandwidth limited, you can also manually upload it from laptop to `/tmp/<tar.gz file name>`, and set the `MR_RELEASE_URL` env in `.env` file, e.g. `/tmp/actions-runner-linux-x64-2.345.6.tar.gz`.
 
 ### GitHub Enterprise Server editions
 
