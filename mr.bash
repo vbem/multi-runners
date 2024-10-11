@@ -317,7 +317,7 @@ function mr::delRunner {
         token="$(mr::pat2token "$enterprise" "$org" "$repo")"
     fi
 
-    log::_ INFO "Deleting runner and local user '$user'"
+    log::_ INFO "Deleting runner and local user '$user' with enterprise='$enterprise' org='$org' repo='$repo'"
     run::logFailed sudo su --login "$user" -- <<-__
         cd runner
         sudo ./svc.sh stop && sudo ./svc.sh uninstall

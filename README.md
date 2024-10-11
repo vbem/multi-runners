@@ -56,7 +56,7 @@ Options:
 
 ### Download this application
 
-This application requires to be run under a Linux user with **non-password sudo permission** (`%runners ALL=(ALL) NOPASSWD:ALL`). It's also fine to run this application by `root`:
+This application requires to be run under a Linux user with **non-password sudo permission** (e.g., `%runners ALL=(ALL) NOPASSWD:ALL`). It's also fine to run this application by `root`:
 
 ```bash
 git clone https://github.com/vbem/multi-runners.git
@@ -95,7 +95,7 @@ If environment variable `MR_RELEASE_URL` is empty, this application will downloa
 ./mr.bash download
 ```
 
-If limited by slow download speed, you can also manually download it to `/tmp/`, and set the `MR_RELEASE_URL` env as `/tmp/actions-runner-linux-x64-2.345.6.tar.gz`.
+If your Linux host is Internet bandwidth limited, you can also manually upload it from laptop to `/tmp/<tar.gz file name>`, and set the `MR_RELEASE_URL` env in `.env` file, e.g. `/tmp/actions-runner-linux-x64-2.345.6.tar.gz`.
 
 ### GitHub Enterprise Server editions
 
