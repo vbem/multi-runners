@@ -333,7 +333,7 @@ function mr::listRunners {
     log::_ INFO "Listing localhost all existing runners"
     run::exists jq || return $?
     local users=''
-    users="$(run::logFailed getent group 'runners' | cut -d: -f4 | tr ',' '\n')" || return $?
+    users="$(run::logFailed getent group 'runners' | cut -d: -f4 | tr ',' '\n' | sort -g)" || return $?
     while read -r user; do
         [[ -z "$user" ]] && continue
         echo -n "$user"
