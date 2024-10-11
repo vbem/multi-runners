@@ -21,9 +21,9 @@ declare -rg MR_GITHUB_PAT
 # download URL of actions runner release, defaults to latest release on GitHub.com
 declare -rg MR_RELEASE_URL
 # baseurl of GitHub API, defaults to https://api.github.com
-declare -rg MR_GIHUB_API_BASEURL="${MR_GIHUB_API_BASEURL:-https://api.github.com}"
+declare -rg MR_GITHUB_API_BASEURL="${MR_GITHUB_API_BASEURL:-https://api.github.com}"
 # baseurl of GitHub service, defaults to https://github.com
-declare -rg MR_GIHUB_BASEURL="${MR_GIHUB_BASEURL:-https://github.com}"
+declare -rg MR_GITHUB_BASEURL="${MR_GITHUB_BASEURL:-https://github.com}"
 # runners' local username prefix, defaults to `runner-`
 declare -rg MR_USER_PREFIX="${MR_USER_PREFIX:-runner-}"
 # runners' local users base directory, overrides the `HOME` setting in `/etc/default/useradd`
@@ -53,12 +53,12 @@ function log::_ {
             && pos="/$each$pos"
     done
     case "$1" in
-    FATAL) color="5;1;91" ;;
-    ERR*) color="1;91" ;;
-    WARN*) color="95" ;;
-    INFO* | NOTICE) color="92" ;;
-    DEBUG) color="94" ;;
-    *) color="96" ;;
+        FATAL) color="5;1;91" ;;
+        ERR*) color="1;91" ;;
+        WARN*) color="95" ;;
+        INFO* | NOTICE) color="92" ;;
+        DEBUG) color="94" ;;
+        *) color="96" ;;
     esac
     datetime="\e[3;2;90m$(date -Isecond)\e[0m"
     pos="\e[3;90m${pos:1}\e[0m"
@@ -110,10 +110,10 @@ function run::exists {
     done
 }
 
-# Check if varible values of given varible names are not empty
-#   $@: varible names
+# Check if any variable value of given variable names is not empty
+#   $@: variable names
 #   $?: 0 if non-empty and non-zero otherwise
-function str::varNotEmpty {
+function str::anyVarNotEmpty {
     local each=''
     for each in "$@"; do
         [[ -n "${!each}" ]]
@@ -121,29 +121,29 @@ function str::varNotEmpty {
     done
 }
 
-# Check if any varible value of given varible names are not empty
-#   $@: varible names
+# Check if any variable value of given variable names are not empty
+#   $@: variable names
 #   $?: 0 if non-empty and non-zero otherwise
-function str::varsNotEmpty {
+function str::allVarsNotEmpty {
     local each=''
     for each in "$@"; do
         [[ -n "${!each}" ]] && return
     done
-    log::failed 1 "Vars '$@' are all empty!" || return $?
+    log::failed 1 "Vars $* are all empty!" || return $?
 }
 
-# Check if varible value of given varible name is IN subsequent arguments
-#   $1: varible name
+# Check if variable value of given variable name is IN subsequent arguments
+#   $1: variable name
 #   $N: arguments as candidate set
 #   $?: 0 if it's in and non-zero otherwise
 function str::varIn {
     local varName="$1" varVal="${!1}" each=''
     shift
-    str::varNotEmpty varName || return $?
+    str::anyVarNotEmpty varName || return $?
     for each in "$@"; do
         [[ "$each" == "$varVal" ]] && return
     done
-    log::_ ERROR "Invalid value '$varVal' for varible '$varName'!"
+    log::_ ERROR "Invalid value '$varVal' for variable '$varName'!"
     return 1
 }
 
@@ -184,13 +184,16 @@ function mr::nproc {
 # https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/monitoring-and-troubleshooting-self-hosted-runners#checking-self-hosted-runner-network-connectivity
 # https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/autoscaling-with-self-hosted-runners#authentication-requirements
 # https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens
-#   $1: organization
-#   $2: repository, registration on organization if empty
+#   $1: enterprise
+#   $2: organization
+#   $3: repository, registration on organization if empty
+#   $?: 0 if successful and non-zero otherwise
+#   stdout: registration token
 function mr::pat2token {
     run::exists jq || return $?
     local enterprise="$1" org="$2" repo="$3" api='' middle='' res=''
-    str::varNotEmpty MR_GITHUB_PAT || return $?
-    str::varsNotEmpty org enterprise || return $?
+    str::anyVarNotEmpty MR_GITHUB_PAT || return $?
+    str::allVarsNotEmpty org enterprise || return $?
 
     if [[ -n "$enterprise" ]]; then
         middle="enterprises/$enterprise"
@@ -199,7 +202,7 @@ function mr::pat2token {
     else
         middle="repos/$org/$repo"
     fi
-    api="$MR_GIHUB_API_BASEURL/$middle/actions/runners/registration-token"
+    api="$MR_GITHUB_API_BASEURL/$middle/actions/runners/registration-token"
 
     log::_ DEBUG "Calling API: $api"
     res="$(curl -Lsm 3 --retry 1 \
@@ -246,17 +249,18 @@ function mr::downloadRunner {
 
 # Add GitHub Actions Runner by local username
 #   $1: username, optional
-#   $2: organization
-#   $3: repository, optional
-#   $4: runner registration token, optional
-#   $5: extra labels, optional
-#   $6: group, defaults to `default`
-#   $7: lines to set in runner's '.env' files, optional
+#   $2: enterprise
+#   $3: organization
+#   $4: repository, optional
+#   $5: runner registration token, optional
+#   $6: extra labels, optional
+#   $7: group, defaults to `default`
+#   $8: lines to set in runner's '.env' files, optional
 #   $?: 0 if successful and non-zero otherwise
 function mr::addRunner {
     local user="$1" enterprise="$2" org="$3" repo="$4" token="$5" extraLabels="$6" group="${7:-default}" dotenv="$8" tarpath=''
+    str::allVarsNotEmpty enterprise org || return $?
 
-    str::varsNotEmpty enterprise org || return $?
     tarpath="$(mr::downloadRunner)" || return $?
     [[ -z "$token" ]] && { token="$(mr::pat2token "$enterprise" "$org" "$repo")" || return $?; }
     user="$(mr::addUser "$user")" || return $?
@@ -265,19 +269,19 @@ function mr::addRunner {
 
     local labels="controller:${MR_URL#https://},username:$user,hostname:$HOSTNAME"
     [[ -r /etc/os-release ]] && labels="$labels,os:$(source /etc/os-release && echo "$ID-$VERSION_ID")"
-    [[ -n "$repo" ]] && labels="$labels,$org/$repo" || labels="$labels,$org"
     [[ -n "$extraLabels" ]] && labels="$labels,$extraLabels"
 
-    if [[ -n "$enterprise" ]]; then
-        middle="enterprises/$enterprise"
-    elif [[ -z "$repo" ]]; then
-        middle="orgs/$org"
-    else
-        middle="repos/$org/$repo"
-    fi
-
     local url=''
-    url="$MR_GIHUB_BASEURL/$middle"
+    if [[ -n "$enterprise" ]]; then
+        url="$MR_GITHUB_BASEURL/enterprises/$enterprise"
+        labels="$labels,$enterprise"
+    elif [[ -z "$repo" ]]; then
+        url="$MR_GITHUB_BASEURL/orgs/$org"
+        labels="$labels,$org"
+    else
+        url="$MR_GITHUB_BASEURL/repos/$org/$repo"
+        labels="$labels,$org/$repo"
+    fi
 
     log::_ INFO "Adding runner into local user '$user' for $url"
     run::logFailed sudo su --login "$user" -- -eo pipefail <<-__
@@ -297,19 +301,20 @@ __
 
 # Delete GitHub Actions Runner by local username
 #   $1: username
-#   $2: organization, optional
-#   $3: repository, optional
-#   $4: runner registration token, optional
+#   $2: enterprise, optional
+#   $3: organization, optional
+#   $4: repository, optional
+#   $5: runner registration token, optional
 #   $?: 0 if successful and non-zero otherwise
 function mr::delRunner {
     local user="$1" enterprise="$2" org="$3" repo="$4" token="$5"
-    str::varNotEmpty user || return $?
+    str::anyVarNotEmpty user || return $?
 
     if [[ -z "$token" ]]; then
-        [[ -z "$enterprise" ]] && enterprise="$(run::logFailed sudo -Hiu "$user" -- cat runner/mr.d/org)"
+        [[ -z "$enterprise" ]] && enterprise="$(run::logFailed sudo -Hiu "$user" -- cat runner/mr.d/enterprise)"
         [[ -z "$org" ]] && org="$(run::logFailed sudo -Hiu "$user" -- cat runner/mr.d/org)"
         [[ -z "$repo" ]] && repo="$(run::logFailed sudo -Hiu "$user" -- cat runner/mr.d/repo)"
-        token="$(mr::pat2token "$org" "$repo")"
+        token="$(mr::pat2token "$enterprise" "$org" "$repo")"
     fi
 
     log::_ INFO "Deleting runner and local user '$user'"
@@ -350,8 +355,8 @@ function mr::test {
 HELP="$FILE_THIS - $MR_URL
 
 Environment variables:
-  MR_GIHUB_BASEURL=$MR_GIHUB_BASEURL
-  MR_GIHUB_API_BASEURL=$MR_GIHUB_API_BASEURL
+  MR_GITHUB_BASEURL=$MR_GITHUB_BASEURL
+  MR_GITHUB_API_BASEURL=$MR_GITHUB_API_BASEURL
   MR_RELEASE_URL=${MR_RELEASE_URL:-<latest on github.com/actions/runner/releases>}
   MR_USER_BASE=${MR_USER_BASE:-<default in /etc/default/useradd>}
   MR_GITHUB_PAT=${MR_GITHUB_PAT::11}${MR_GITHUB_PAT:+***}
@@ -370,7 +375,7 @@ Sub-commands:
             e.g. ${BASH_SOURCE[0]} pat2token --org SOME_OWNER --repo SOME_REPO
 
 Options:
-  --enterprise  GitHub Enterprise name
+  --enterprise  GitHub Cloud Enterprise name, optional
   --org         GitHub organization name
   --repo        GitHub repository name, registration on organization-level if empty
   --user        Linux local username of runner
@@ -395,47 +400,47 @@ function mr::main {
 
     while true; do
         case "$1" in
-        -h | --help) echo -n "$HELP" && return ;;
-        --enterprise)
-            enterprise="$2"
-            shift 2
-            ;;
-        --org)
-            org="$2"
-            shift 2
-            ;;
-        --repo)
-            repo="$2"
-            shift 2
-            ;;
-        --user)
-            user="$2"
-            shift 2
-            ;;
-        --labels)
-            labels="$2"
-            shift 2
-            ;;
-        --token)
-            token="$2"
-            shift 2
-            ;;
-        --group)
-            group="$2"
-            shift 2
-            ;;
-        --dotenv)
-            dotenv+="$2"$'\n'
-            shift 2
-            ;;
-        --)
-            shift
-            break
-            ;;
-        *)
-            log::_ ERROR "Invalid option '$1'! See '$FILE_THIS help'."
-            return 255
-            ;;
+            -h | --help) echo -n "$HELP" && return ;;
+            --enterprise)
+                enterprise="$2"
+                shift 2
+                ;;
+            --org)
+                org="$2"
+                shift 2
+                ;;
+            --repo)
+                repo="$2"
+                shift 2
+                ;;
+            --user)
+                user="$2"
+                shift 2
+                ;;
+            --labels)
+                labels="$2"
+                shift 2
+                ;;
+            --token)
+                token="$2"
+                shift 2
+                ;;
+            --group)
+                group="$2"
+                shift 2
+                ;;
+            --dotenv)
+                dotenv+="$2"$'\n'
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            *)
+                log::_ ERROR "Invalid option '$1'! See '$FILE_THIS help'."
+                return 255
+                ;;
         esac
     done
 
@@ -443,18 +448,18 @@ function mr::main {
     subCmd="$1"
     shift
     case "$subCmd" in
-    add) mr::addRunner "$user" "$enterprise" "$org" "$repo" "$token" "$labels" "$group" "$dotenv" ;;
-    del) mr::delRunner "$user" "$enterprise" "$org" "$repo" "$token" ;;
-    list) mr::listRunners ;;
-    status) mr::statusRunner "$user" ;;
-    download) mr::downloadRunner ;;
-    pat2token) mr::pat2token "$enterprise" "$org" "$repo" ;;
-    help | '') echo -n "$HELP" >&2 ;;
-    test) mr::test "$@" ;;
-    *)
-        log::_ ERROR "Invalid command '$1'! See '$FILE_THIS help'."
-        return 255
-        ;;
+        add) mr::addRunner "$user" "$enterprise" "$org" "$repo" "$token" "$labels" "$group" "$dotenv" ;;
+        del) mr::delRunner "$user" "$enterprise" "$org" "$repo" "$token" ;;
+        list) mr::listRunners ;;
+        status) mr::statusRunner "$user" ;;
+        download) mr::downloadRunner ;;
+        pat2token) mr::pat2token "$enterprise" "$org" "$repo" ;;
+        help | '') echo -n "$HELP" >&2 ;;
+        test) mr::test "$@" ;;
+        *)
+            log::_ ERROR "Invalid command '$1'! See '$FILE_THIS help'."
+            return 255
+            ;;
     esac
 }
 

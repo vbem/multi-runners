@@ -15,7 +15,7 @@ This application is designed for controlling multi [self-hosted GitHub Action ru
 - Simple as more as possible, single Bash script.
 - Lightweight wrapper of official self-hosted runner.
 - Both *github.com* and *GitHub Enterprise* are support.
-- Both *organization* and *repository* level runners are supported.
+- Either *organization* or *repository* or *GitHub Cloud Enterprise* level runners are supported.
 
 ## Usage
 
@@ -23,11 +23,11 @@ This application is designed for controlling multi [self-hosted GitHub Action ru
 mr.bash - https://github.com/vbem/multi-runners
 
 Environment variables:
-  MR_GIHUB_BASEURL=https://github.com
-  MR_GIHUB_API_BASEURL=https://api.github.com
+  MR_GITHUB_BASEURL=https://github.com
+  MR_GITHUB_API_BASEURL=https://api.github.com
   MR_RELEASE_URL=<latest on github.com/actions/runner/releases>
-  MR_USER_BASE=/home
-  MR_GITHUB_PAT=github_pat_***
+  MR_USER_BASE=<default in /etc/default/useradd>
+  MR_GITHUB_PAT=***
 
 Sub-commands:
   add       Add one self-hosted runner on this host
@@ -43,14 +43,15 @@ Sub-commands:
             e.g. ./mr.bash pat2token --org SOME_OWNER --repo SOME_REPO
 
 Options:
-  --org     GitHub organization name
-  --repo    GitHub repository name, registration on organization-level if empty
-  --user    Linux local username of runner
-  --labels  Extra labels for the runner
-  --group   Runner group for the runner
-  --token   Runner registration token, takes precedence over MR_GITHUB_PAT
-  --dotenv  The lines to set in runner's '.env' files
-  -h --help Show this help.
+  --enterprise  GitHub Cloud Enterprise name, optional
+  --org         GitHub organization name
+  --repo        GitHub repository name, registration on organization-level if empty
+  --user        Linux local username of runner
+  --labels      Extra labels for the runner
+  --group       Runner group for the runner
+  --token       Runner registration token, takes precedence over MR_GITHUB_PAT
+  --dotenv      The lines to set in runner's '.env' files
+  -h --help     Show this help.
 ```
 
 ### Download this application
@@ -98,7 +99,11 @@ If limited by slow download speed, you can also manually download it to `/tmp/`,
 
 ### GitHub Enterprise Server editions
 
-*GitHub Enterprise Server* editions usually have different server and API URL prefixes comparing with *github.com*, you can set them in environment variables `MR_GIHUB_BASEURL` and `MR_GIHUB_API_BASEURL`.
+*GitHub Enterprise Server* editions usually have different server and API URL prefixes comparing with *github.com*, you can set them in environment variables `MR_GITHUB_BASEURL` and `MR_GITHUB_API_BASEURL`.
+
+### GitHub Enterprise Cloud level registration
+
+For *GitHub Enterprise Cloud* level registration, you can specify the `--enterprise` option to set the *GitHub Enterprise Cloud* name.
 
 ### Setup multi-runners on single host
 
