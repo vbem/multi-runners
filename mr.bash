@@ -256,74 +256,106 @@ function mr::downloadRunner {
 #   $6: extra labels, optional
 #   $7: group, defaults to `default`
 #   $8: lines to set in runner's '.env' files, optional
+#   $9: count of runners, optional, defaults to 1
 #   $?: 0 if successful and non-zero otherwise
 function mr::addRunner {
-    local user="$1" enterprise="$2" org="$3" repo="$4" token="$5" extraLabels="$6" group="${7:-default}" dotenv="$8" tarpath=''
+    local username="$1" enterprise="$2" org="$3" repo="$4" token="$5" extraLabels="$6" group="${7:-default}" dotenv="$8" tarpath=''
+    local -i count="${9:-1}"
     str::allVarsNotEmpty enterprise org || return $?
+
+    [[ -n "$username" ]] && ((count > 1)) && {
+        log::_ ERROR "Count must be 1 when username is given!"
+        return 1
+    }
 
     [[ -z "$token" ]] && { token="$(mr::pat2token "$enterprise" "$org" "$repo")" || return $?; }
     tarpath="$(mr::downloadRunner)" || return $?
-    user="$(mr::addUser "$user")" || return $?
 
-    local name="$user@$HOSTNAME"
+    local commonLabels="controller:${MR_URL#https://},hostname:$HOSTNAME"
+    commonLabels+=",createdtime:$(date --iso-8601=sec)"
+    [[ -r /etc/os-release ]] && commonLabels+=",os:$(source /etc/os-release && echo "$ID-$VERSION_ID")"
+    [[ -n "$extraLabels" ]] && commonLabels+=",$extraLabels"
 
-    local labels="controller:${MR_URL#https://},username:$user,hostname:$HOSTNAME"
-    [[ -r /etc/os-release ]] && labels="$labels,os:$(source /etc/os-release && echo "$ID-$VERSION_ID")"
-    [[ -n "$extraLabels" ]] && labels="$labels,$extraLabels"
-
-    local url=''
-    if [[ -n "$enterprise" ]]; then
-        url="$MR_GITHUB_BASEURL/enterprises/$enterprise"
-        labels="$labels,$enterprise"
-    elif [[ -z "$repo" ]]; then
-        url="$MR_GITHUB_BASEURL/$org"
-        labels="$labels,$org"
-    else
-        url="$MR_GITHUB_BASEURL/$org/$repo"
-        labels="$labels,$org/$repo"
-    fi
-
-    log::_ INFO "Adding runner into local user '$user' for $url"
-    run::logFailed sudo su --login "$user" -- -eo pipefail <<-__
-        mkdir -p runner/mr.d && cd runner/mr.d
-        echo -n '$enterprise' > enterprise && echo -n '$org' > org && echo -n '$repo' > repo && echo -n '$url' > url
-        echo -n '$name' > name && echo -n '$labels' > labels && echo -n '$tarpath' > tarpath
-        cd .. && tar -xzf "$tarpath"
-        echo "$dotenv" >> .env
-        ./config.sh --unattended --replace --url '$url' --token '$token' --name '$name' --labels '$labels' --runnergroup '$group'
-        sudo ./svc.sh install '$user'
-        if [[ "$(getenforce 2>/dev/null)" == "Enforcing" ]]; then
-            chcon -t bin_t ./runsvc.sh # https://github.com/vbem/multi-runners/issues/9
+    for i in $(seq 1 "$count"); do
+        user="$(mr::addUser "$username")" || return $?
+        local name="$user@$HOSTNAME"
+        local labels="$commonLabels,username:$user"
+        local url=''
+        if [[ -n "$enterprise" ]]; then
+            url="$MR_GITHUB_BASEURL/enterprises/$enterprise"
+            labels+=",$enterprise"
+        elif [[ -z "$repo" ]]; then
+            url="$MR_GITHUB_BASEURL/$org"
+            labels+=",$org"
+        else
+            url="$MR_GITHUB_BASEURL/$org/$repo"
+            labels+=",$org/$repo"
         fi
-        sudo ./svc.sh start
+
+        log::_ INFO "Installing runner $i in local user '$user' for $url"
+        run::logFailed sudo su --login "$user" -- -eo pipefail <<-__
+            mkdir -p runner/mr.d && cd runner/mr.d
+            echo -n '$enterprise' > enterprise && echo -n '$org' > org && echo -n '$repo' > repo && echo -n '$url' > url
+            echo -n '$name' > name && echo -n '$labels' > labels && echo -n '$tarpath' > tarpath
+            cd .. && tar -xzf "$tarpath"
+            echo "$dotenv" >> .env
+            ./config.sh --unattended --replace --url '$url' --token '$token' --name '$name' --labels '$labels' --runnergroup '$group'
+            sudo ./svc.sh install '$user'
+            if [[ "$(getenforce 2>/dev/null)" == "Enforcing" ]]; then
+                chcon -t bin_t ./runsvc.sh # https://github.com/vbem/multi-runners/issues/9
+            fi
+            sudo ./svc.sh start
 __
+        log::failed $? "Failed installing runner $i in local user '$user' for $url!" || return $?
+    done
 }
 
 # Delete GitHub Actions Runner by local username
-#   $1: username
+#   $1: username, option
 #   $2: enterprise, optional
 #   $3: organization, optional
 #   $4: repository, optional
 #   $5: runner registration token, optional
+#   $6: count of runners, optional, defaults to 0 (all)
 #   $?: 0 if successful and non-zero otherwise
 function mr::delRunner {
     local user="$1" enterprise="$2" org="$3" repo="$4" token="$5"
-    str::anyVarNotEmpty user || return $?
+    local -i count="${6:-0}"
 
-    if [[ -z "$token" ]]; then
-        [[ -z "$enterprise" ]] && enterprise="$(run::logFailed sudo -Hiu "$user" -- cat runner/mr.d/enterprise)"
-        [[ -z "$org" ]] && org="$(run::logFailed sudo -Hiu "$user" -- cat runner/mr.d/org)"
-        [[ -z "$repo" ]] && repo="$(run::logFailed sudo -Hiu "$user" -- cat runner/mr.d/repo)"
-        token="$(mr::pat2token "$enterprise" "$org" "$repo")"
+    local -a removals=()
+    if [[ -n "$user" ]]; then
+        removals+=("$user")
+    else
+        existing="$(run::logFailed getent group 'runners' | cut -d: -f4 | tr ',' '\n' | sort -g)" || return $?
+        while read -r each; do
+            [[ -z "$each" ]] && continue
+            ((count != 0)) && ((${#removals[@]} >= count)) && break
+            each_enterprise="$(run::logFailed sudo -Hiu "$each" -- cat runner/mr.d/enterprise)"
+            each_org="$(run::logFailed sudo -Hiu "$each" -- cat runner/mr.d/org)"
+            each_repo="$(run::logFailed sudo -Hiu "$each" -- cat runner/mr.d/repo)"
+            each_url="$(run::logFailed sudo -Hiu "$each" -- cat runner/mr.d/url)"
+            if [[ "$enterprise" == "$each_enterprise" && "$org" == "$each_org" && "$repo" == "$each_repo" ]]; then
+                log::_ DEBUG "Found local user '$each' to delete for $each_url"
+                removals+=("$each")
+            fi
+        done <<<"$existing"
     fi
 
-    log::_ INFO "Deleting runner and local user '$user' with enterprise='$enterprise' org='$org' repo='$repo'"
-    run::logFailed sudo su --login "$user" -- <<-__
-        cd runner
-        sudo ./svc.sh stop && sudo ./svc.sh uninstall
-        ./config.sh remove --token '$token'
+    for user in "${removals[@]}"; do
+        log::_ INFO "Deleting runner in local user '$user'"
+        if [[ -z "$token" ]]; then
+            enterprise="$(run::logFailed sudo -Hiu "$user" -- cat runner/mr.d/enterprise)"
+            org="$(run::logFailed sudo -Hiu "$user" -- cat runner/mr.d/org)"
+            repo="$(run::logFailed sudo -Hiu "$user" -- cat runner/mr.d/repo)"
+            token="$(mr::pat2token "$enterprise" "$org" "$repo")"
+        fi
+        run::logFailed sudo su --login "$user" -- <<-__
+            cd runner
+            sudo ./svc.sh stop && sudo ./svc.sh uninstall
+            ./config.sh remove --token '$token'
 __
-    run::log sudo userdel -rf "$user" || return $?
+        run::log sudo userdel -rf "$user"
+    done
 }
 
 # List all existing runners
@@ -364,8 +396,10 @@ Environment variables:
 Sub-commands:
   add       Add one self-hosted runner on this host
             e.g. ${BASH_SOURCE[0]} add --org ORG --repo REPO --labels cloud:ali,region:cn-shanghai
+            e.g. ${BASH_SOURCE[0]} add --org ORG --count 3
   del       Delete one self-hosted runner on this host
             e.g. ${BASH_SOURCE[0]} del --user runner-1
+            e.g. ${BASH_SOURCE[0]} del --org ORG --count 3
   list      List all runners on this host
             e.g. ${BASH_SOURCE[0]} list
   download  Download GitHub Actions Runner release tar to /tmp/
@@ -383,6 +417,7 @@ Options:
   --group       Runner group for the runner
   --token       Runner registration token, takes precedence over MR_GITHUB_PAT
   --dotenv      The lines to set in runner's '.env' files
+  --count       The number to add or del, optional, defaults to 1 for add and all for del
   -h --help     Show this help.
 "
 declare -rg HELP
@@ -391,10 +426,10 @@ declare -rg HELP
 #   $?: 0 if successful and non-zero otherwise
 function mr::main {
     local getopt_output='' subCmd=''
-    local org='' repo='' user='' labels='' token='' group='' dotenv=''
+    local org='' repo='' user='' labels='' token='' group='' dotenv='' count=''
 
     # parse options into variables
-    getopt_output="$(getopt -o h -l help,enterprise:,org:,repo:,user:,labels:,token:,group:,dotenv: -n "$FILE_THIS" -- "$@")"
+    getopt_output="$(getopt -o h -l help,enterprise:,org:,repo:,user:,labels:,token:,group:,dotenv:,count: -n "$FILE_THIS" -- "$@")"
     log::failed $? "getopt failed!" || return $?
     eval set -- "$getopt_output"
 
@@ -433,6 +468,10 @@ function mr::main {
                 dotenv+="$2"$'\n'
                 shift 2
                 ;;
+            --count)
+                count="$2"
+                shift 2
+                ;;
             --)
                 shift
                 break
@@ -448,8 +487,8 @@ function mr::main {
     subCmd="$1"
     shift
     case "$subCmd" in
-        add) mr::addRunner "$user" "$enterprise" "$org" "$repo" "$token" "$labels" "$group" "$dotenv" ;;
-        del) mr::delRunner "$user" "$enterprise" "$org" "$repo" "$token" ;;
+        add) mr::addRunner "$user" "$enterprise" "$org" "$repo" "$token" "$labels" "$group" "$dotenv" "$count" ;;
+        del) mr::delRunner "$user" "$enterprise" "$org" "$repo" "$token" "$count" ;;
         list) mr::listRunners ;;
         status) mr::statusRunner "$user" ;;
         download) mr::downloadRunner ;;

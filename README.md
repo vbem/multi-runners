@@ -32,8 +32,10 @@ Environment variables:
 Sub-commands:
   add       Add one self-hosted runner on this host
             e.g. ./mr.bash add --org ORG --repo REPO --labels cloud:ali,region:cn-shanghai
+            e.g. ./mr.bash add --org ORG --count 3
   del       Delete one self-hosted runner on this host
             e.g. ./mr.bash del --user runner-1
+            e.g. ./mr.bash del --org ORG --count 3
   list      List all runners on this host
             e.g. ./mr.bash list
   download  Download GitHub Actions Runner release tar to /tmp/
@@ -51,6 +53,7 @@ Options:
   --group       Runner group for the runner
   --token       Runner registration token, takes precedence over MR_GITHUB_PAT
   --dotenv      The lines to set in runner's '.env' files
+  --count       The number to add or del, optional, defaults to 1 for add and all for del
   -h --help     Show this help.
 ```
 
@@ -114,13 +117,10 @@ To setup multi-runners, you can simplify run following command multi times:
 ./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-1>
 
 # 2 runners for repository `<ORG-NAME-1>/<REPO-NAME-2>`
-./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-2>
-./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-2>
+./mr.bash add --org <ORG-NAME-1> --repo <REPO-NAME-2> --count 2
 
 # 3 runners for organization `<ORG-NAME-2>`
-./mr.bash add --org <ORG-NAME-2>
-./mr.bash add --org <ORG-NAME-2>
-./mr.bash add --org <ORG-NAME-2>
+./mr.bash add --org <ORG-NAME-2> --count 3
 ```
 
 This application will create one Linux local user for one runner via `useradd` command. The *Base Directory* of these users is read from `HOME` setting in your `/etc/default/useradd` file by default (typically `/home`). You can also set it in environment variable `MR_USER_BASE` to override system-wide default.
@@ -146,10 +146,15 @@ runner-5 537M running https://github.com/<ORG-NAME-2>
 
 ### Delete an existing runner
 
-You can delete an existing runner by its local Linux username.
-
 ```bash
+# delete an existing runner by its local Linux username.
 ./mr.bash del --user <runner-?>
+
+# delete all runners for specific repository
+./mr.bash del --org <ORG-NAME-1> --repo <REPO-NAME-2>
+
+# delete multi runners by `--count` options.
+./mr.bash del --org <ORG-NAME-2> --count 2
 ```
 
 ### Specify runner in workflow file
