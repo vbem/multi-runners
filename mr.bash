@@ -248,18 +248,19 @@ function mr::downloadRunner {
 }
 
 # Add GitHub Actions Runner by local username
-#   $1: username, optional
-#   $2: enterprise
-#   $3: organization
-#   $4: repository, optional
-#   $5: runner registration token, optional
-#   $6: extra labels, optional
-#   $7: group, defaults to `default`
-#   $8: lines to set in runner's '.env' files, optional
-#   $9: count of runners, optional, defaults to 1
+#   $1:  username, optional
+#   $2:  enterprise
+#   $3:  organization
+#   $4:  repository, optional
+#   $5:  runner registration token, optional
+#   $6:  extra labels, optional
+#   $7:  group, defaults to `default`
+#   $8:  lines to set in runner's '.env' files, optional
+#   $9:  count of runners, optional, defaults to 1
+#   $10: extra options for `config.sh`, optional, such as `--no-default-labels`
 #   $?: 0 if successful and non-zero otherwise
 function mr::addRunner {
-    local username="$1" enterprise="$2" org="$3" repo="$4" token="$5" extraLabels="$6" group="${7:-default}" dotenv="$8" tarpath=''
+    local username="$1" enterprise="$2" org="$3" repo="$4" token="$5" extraLabels="$6" group="${7:-default}" dotenv="$8" opts="${10}" tarpath=''
     local -i count="${9:-1}"
     str::allVarsNotEmpty enterprise org || return $?
 
@@ -299,7 +300,7 @@ function mr::addRunner {
             echo -n '$name' > name && echo -n '$labels' > labels && echo -n '$tarpath' > tarpath
             cd .. && tar -xzf "$tarpath"
             echo "$dotenv" >> .env
-            ./config.sh --unattended --replace --url '$url' --token '$token' --name '$name' --labels '$labels' --runnergroup '$group'
+            ./config.sh --unattended --replace --url '$url' --token '$token' --name '$name' --labels '$labels' --runnergroup '$group' $opts
             sudo ./svc.sh install '$user'
             if [[ "$(getenforce 2>/dev/null)" == "Enforcing" ]]; then
                 chcon -t bin_t ./runsvc.sh # https://github.com/vbem/multi-runners/issues/9
@@ -317,9 +318,10 @@ __
 #   $4: repository, optional
 #   $5: runner registration token, optional
 #   $6: count of runners, optional, defaults to 0 (all)
+#   $7: extra options for `config.sh`, optional, such as `--local`
 #   $?: 0 if successful and non-zero otherwise
 function mr::delRunner {
-    local user="$1" enterprise="$2" org="$3" repo="$4" token="$5"
+    local user="$1" enterprise="$2" org="$3" repo="$4" token="$5" opts="$7"
     local -i count="${6:-0}"
 
     local -a removals=()
@@ -352,7 +354,7 @@ function mr::delRunner {
         run::logFailed sudo su --login "$user" -- <<-__
             cd runner
             sudo ./svc.sh stop && sudo ./svc.sh uninstall
-            ./config.sh remove --token '$token'
+            ./config.sh remove --token '$token' $opts
 __
         run::log sudo userdel -rf "$user"
     done
@@ -418,6 +420,7 @@ Options:
   --token       Runner registration token, takes precedence over MR_GITHUB_PAT
   --dotenv      The lines to set in runner's '.env' files
   --count       The number to add or del, optional, defaults to 1 for add and all for del
+  --opts        Extra options for 'config.sh', optional, such as '--no-default-labels'
   -h --help     Show this help.
 "
 declare -rg HELP
@@ -426,7 +429,7 @@ declare -rg HELP
 #   $?: 0 if successful and non-zero otherwise
 function mr::main {
     local getopt_output='' subCmd=''
-    local org='' repo='' user='' labels='' token='' group='' dotenv='' count=''
+    local org='' repo='' user='' labels='' token='' group='' dotenv='' count='' opts=''
 
     # parse options into variables
     getopt_output="$(getopt -o h -l help,enterprise:,org:,repo:,user:,labels:,token:,group:,dotenv:,count: -n "$FILE_THIS" -- "$@")"
@@ -472,6 +475,10 @@ function mr::main {
                 count="$2"
                 shift 2
                 ;;
+            --opts)
+                opts="$2"
+                shift 2
+                ;;
             --)
                 shift
                 break
@@ -487,8 +494,8 @@ function mr::main {
     subCmd="$1"
     shift
     case "$subCmd" in
-        add) mr::addRunner "$user" "$enterprise" "$org" "$repo" "$token" "$labels" "$group" "$dotenv" "$count" ;;
-        del) mr::delRunner "$user" "$enterprise" "$org" "$repo" "$token" "$count" ;;
+        add) mr::addRunner "$user" "$enterprise" "$org" "$repo" "$token" "$labels" "$group" "$dotenv" "$count" "$opts" ;;
+        del) mr::delRunner "$user" "$enterprise" "$org" "$repo" "$token" "$count" "$opts" ;;
         list) mr::listRunners ;;
         status) mr::statusRunner "$user" ;;
         download) mr::downloadRunner ;;
