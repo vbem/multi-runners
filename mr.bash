@@ -432,7 +432,7 @@ function mr::main {
     local org='' repo='' user='' labels='' token='' group='' dotenv='' count='' opts=''
 
     # parse options into variables
-    getopt_output="$(getopt -o h -l help,enterprise:,org:,repo:,user:,labels:,token:,group:,dotenv:,count: -n "$FILE_THIS" -- "$@")"
+    getopt_output="$(getopt -o h -l help,enterprise:,org:,repo:,user:,labels:,token:,group:,dotenv:,count:,opts: -n "$FILE_THIS" -- "$@")"
     log::failed $? "getopt failed!" || return $?
     eval set -- "$getopt_output"
 
