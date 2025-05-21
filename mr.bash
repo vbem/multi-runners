@@ -16,20 +16,22 @@ declare -rg DIR_THIS FILE_THIS
 [[ -r "$DIR_THIS/.env" ]] && source "$DIR_THIS/.env"
 
 # environment variables for customization
-# Github personal access token
-declare -rg MR_GITHUB_PAT
-# download URL of actions runner release, defaults to latest release on GitHub.com
-declare -rg MR_RELEASE_URL
-# baseurl of GitHub API, defaults to https://api.github.com
-declare -rg MR_GITHUB_API_BASEURL="${MR_GITHUB_API_BASEURL:-https://api.github.com}"
-# baseurl of GitHub service, defaults to https://github.com
-declare -rg MR_GITHUB_BASEURL="${MR_GITHUB_BASEURL:-https://github.com}"
-# runners' local username prefix, defaults to `runner-`
-declare -rg MR_USER_PREFIX="${MR_USER_PREFIX:-runner-}"
-# runners' local users base directory, overrides the `HOME` setting in `/etc/default/useradd`
-declare -rg MR_USER_BASE
 # URL of this application
 declare -rg MR_URL='https://github.com/vbem/multi-runners'
+# baseurl of GitHub service, defaults to https://github.com
+declare -rg MR_GITHUB_BASEURL="${MR_GITHUB_BASEURL:-https://github.com}"
+# baseurl of GitHub API, defaults to https://api.github.com
+declare -rg MR_GITHUB_API_BASEURL="${MR_GITHUB_API_BASEURL:-https://api.github.com}"
+# download URL of actions runner release, defaults to latest release on GitHub.com
+declare -rg MR_RELEASE_URL
+# runners' local users base directory, overrides the `HOME` setting in `/etc/default/useradd`
+declare -rg MR_USER_BASE
+# runners' local username prefix, defaults to `runner-`
+declare -rg MR_USER_PREFIX="${MR_USER_PREFIX:-runner-}"
+# custom commands to run before starting the runner service
+declare -rg MR_CMD_SVC_PRE_START
+# Github personal access token
+declare -rg MR_GITHUB_PAT
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # stdlib
@@ -305,6 +307,7 @@ function mr::addRunner {
             if [[ "$(getenforce 2>/dev/null)" == "Enforcing" ]]; then
                 chcon -t bin_t ./runsvc.sh # https://github.com/vbem/multi-runners/issues/9
             fi
+            $MR_CMD_SVC_PRE_START # https://github.com/vbem/multi-runners/issues/23
             sudo ./svc.sh start
 __
         log::failed $? "Failed installing runner $i in local user '$user' for $url!" || return $?
@@ -393,6 +396,7 @@ Environment variables:
   MR_GITHUB_API_BASEURL=$MR_GITHUB_API_BASEURL
   MR_RELEASE_URL=${MR_RELEASE_URL:-<latest on github.com/actions/runner/releases>}
   MR_USER_BASE=${MR_USER_BASE:-<default in /etc/default/useradd>}
+  MR_USER_PREFIX=${MR_USER_PREFIX}
   MR_GITHUB_PAT=${MR_GITHUB_PAT::11}${MR_GITHUB_PAT:+***}
 
 Sub-commands:

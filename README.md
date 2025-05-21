@@ -27,7 +27,8 @@ Environment variables:
   MR_GITHUB_API_BASEURL=https://api.github.com
   MR_RELEASE_URL=<latest on github.com/actions/runner/releases>
   MR_USER_BASE=<default in /etc/default/useradd>
-  MR_GITHUB_PAT=***
+  MR_USER_PREFIX=runner-
+  MR_GITHUB_PAT=ghp_***
 
 Sub-commands:
   add       Add one self-hosted runner on this host
@@ -184,4 +185,25 @@ Then the following lines will be added to `.env` file located in self-hosted run
 TZ=Asia/Shanghai
 PATH=$PATH:/mybin
 all_proxy=socks5h://localhost:1080
+```
+
+### Inject hook script before starting the runner service
+
+This application also supports to inject a hook script before starting the [runner service](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/configuring-the-self-hosted-runner-application-as-a-service) via `MR_CMD_SVC_PRE_START` environment variable.
+
+For example, you can limit the CPU and RAM usage of the runner service by modifying the unit file of the runner service. Add the following lines to the `.env` file under the directory of this application. Then this script will be executed just before starting the runner service - `./svc.sh start`.
+
+```bash
+MR_CMD_SVC_PRE_START="$(cat <<-'__HEREDOC__'
+echo "🚀 Running custom commands before starting runner service."
+name="$(<mr.d/name)"
+echo "🚀 Runner: $name | User: $USER | Dir: $PWD"
+source <( sed -n "1,$(grep -n '^UNIT_PATH=' svc.sh | cut -d: -f1)p" svc.sh )
+echo "🚀 UNIT_PATH: $UNIT_PATH"
+sudo sed -i -e '/^\[Service\]/a CPUQuota=50%' -e '/^\[Service\]/a MemoryMax=512M' "$UNIT_PATH"
+sudo systemctl daemon-reload
+echo "🚀 Updated unit file:"
+cat "$UNIT_PATH"
+__HEREDOC__
+)"
 ```
