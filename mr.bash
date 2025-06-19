@@ -228,20 +228,25 @@ function mr::downloadRunner {
 
     if [[ -z "$url" ]]; then
         run::exists jq || return $?
-        
-        # Detect architecture
+
+        # Detect architecture https://github.com/vbem/multi-runners/pull/26
         case "$(uname -m)" in
-            x86_64) arch="x64" ;;
-            aarch64|arm64) arch="arm64" ;;
-            *) log::_ ERROR "Unsupported architecture: $(uname -m)" && return 1 ;;
+            x86_64 | amd64) arch="x64" ;;
+            aarch64 | arm64) arch="arm64" ;;
+            armv6l | armv7l | armv8l) arch="arm" ;;
+            *)
+                log::_ ERROR "Unsupported architecture: $(uname -m)"
+                return 1
+                ;;
         esac
-        
+
         curlArgs=(-Lsm 3 --retry 1)
         # https://github.com/vbem/multi-runners/pull/16
         [[ -n "$MR_GITHUB_PAT" ]] && curlArgs+=('-H' "Authorization: Bearer ${MR_GITHUB_PAT}")
         url="$(
             curl "${curlArgs[@]}" https://api.github.com/repos/actions/runner/releases/latest \
-                | jq -Mcre ".assets[].browser_download_url|select(test(\"linux-${arch}-[^-]+\\\\.tar\\\\.gz\"))"
+                | jq -Mcre --arg arch "$arch" \
+                    '.assets[].browser_download_url|select(test("linux-\($arch)-[^-]+\\.tar\\.gz"))'
         )" || log::failed $? "Fetching latest version number failed, check PAT or rate limit!" || return $?
     fi
 
