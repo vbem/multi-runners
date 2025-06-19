@@ -224,16 +224,24 @@ function mr::pat2token {
 #   $?: 0 if successful and non-zero otherwise
 #   stdout: local path of downloaded file
 function mr::downloadRunner {
-    local url="$MR_RELEASE_URL" tarpath=''
+    local url="$MR_RELEASE_URL" tarpath='' arch=''
 
     if [[ -z "$url" ]]; then
         run::exists jq || return $?
+        
+        # Detect architecture
+        case "$(uname -m)" in
+            x86_64) arch="x64" ;;
+            aarch64|arm64) arch="arm64" ;;
+            *) log::_ ERROR "Unsupported architecture: $(uname -m)" && return 1 ;;
+        esac
+        
         curlArgs=(-Lsm 3 --retry 1)
         # https://github.com/vbem/multi-runners/pull/16
         [[ -n "$MR_GITHUB_PAT" ]] && curlArgs+=('-H' "Authorization: Bearer ${MR_GITHUB_PAT}")
         url="$(
             curl "${curlArgs[@]}" https://api.github.com/repos/actions/runner/releases/latest \
-                | jq -Mcre '.assets[].browser_download_url|select(test("linux-x64-[^-]+\\.tar\\.gz"))'
+                | jq -Mcre ".assets[].browser_download_url|select(test(\"linux-${arch}-[^-]+\\\\.tar\\\\.gz\"))"
         )" || log::failed $? "Fetching latest version number failed, check PAT or rate limit!" || return $?
     fi
 
